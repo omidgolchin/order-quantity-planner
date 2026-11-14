@@ -1,0 +1,120 @@
+"""Offline pipeline: Online Retail II weekly sales -> the page's data file
+and the research-notes backtest tables.
+
+Run by scripts/build_data.py. Everything is computed here, in Python;
+the page only reads the result. Example products get the full treatment
+(weekly and monthly distributions the verdict runs on). All 30 products
+get the weekly method race, whose table is the README's research note.
+"""
+
+from __future__ import annotations
+
+import json
+
+import numpy as np
+import pandas as pd
+
+from .forecast import backtest, demand_distribution
+
+EXAMPLE_PRODUCTS = [
+    "85123A",  # WHITE HANGING HEART T-LIGHT HOLDER: steady, high volume (the default)
+    "85099B",  # JUMBO BAG RED WHITE SPOTTY: steady, high volume
+    "22086",   # PAPER CHAIN KIT 50'S CHRISTMAS: strongly seasonal
+    "22952",   # 72 CAKE CASES VINTAGE CHRISTMAS: intermittent (about half the weeks are zero)
+    "20725",   # LUNCH BAG RED SPOTTY: steady; also used truncated, as the short-history example
+]
+SHORT_PRODUCT = "20725"
+SHORT_WEEKS = 10
+DRAWS_SHIPPED = 2000
+
+
+def load_weekly(path) -> pd.DataFrame:
+    df = pd.read_csv(path, dtype={"product": str})
+    df["week"] = pd.to_datetime(df["week"])
+    # Net units can be negative in a week where returns beat sales (14 of
+    # 3,120 product-weeks); demand cannot be negative, so floor at zero.
+    df["units"] = df["units"].clip(lower=0)
+    return df.sort_values(["product", "week"])
+
+
+def monthly_series(weeks: pd.Series, units: pd.Series):
+    """Aggregate Monday-start weekly units into calendar months."""
+    frame = pd.DataFrame({"week": weeks.values, "units": units.values})
+    frame["month"] = frame["week"].dt.to_period("M")
+    g = frame.groupby("month")["units"].sum()
+    labels = [str(p) for p in g.index]
+    return labels, [float(v) for v in g.values]
+
+
+def _dist_payload(series, season, seed):
+    d = demand_distribution(series, season=season, seed=seed)
+    rng = np.random.default_rng(seed + 1)
+    draws = d["draws"]
+    if len(draws) > DRAWS_SHIPPED:
+        idx = rng.choice(len(draws), size=DRAWS_SHIPPED, replace=False)
+        draws = [draws[int(i)] for i in sorted(idx)]
+    bt = None
+    if d["backtest"]:
+        bt = {m: {"mae": round(v["mae"], 2), "coverage80": round(v["coverage80"], 3),
+                  "origins": v["origins"]} for m, v in d["backtest"].items()}
+    return {"method": d["method"], "forecast": round(float(d["forecast"]), 2),
+            "draws": draws, "backtest": bt, "zeroShare": round(d["zero_share"], 4),
+            "intermittent": bool(d["intermittent"]), "shortHistory": bool(d["short_history"])}
+
+
+def build_products(df: pd.DataFrame) -> list[dict]:
+    products = []
+    for i, code in enumerate(EXAMPLE_PRODUCTS):
+        sub = df[df["product"] == code]
+        units = [float(v) for v in sub["units"]]
+        weeks = [d.strftime("%Y-%m-%d") for d in sub["week"]]
+        mlabels, munits = monthly_series(sub["week"], sub["units"])
+        entry = {
+            "id": code, "code": code, "name": str(sub["name"].iloc[0]).title(),
+            "medianPrice": float(sub["price"].iloc[0]),
+            "week": {"labels": weeks, "history": units,
+                     "dist": _dist_payload(units, 52, seed=1000 + i)},
+            "month": {"labels": mlabels, "history": munits,
+                      "dist": _dist_payload(munits, 12, seed=2000 + i)},
+        }
+        products.append(entry)
+        if code == SHORT_PRODUCT:
+            short_units = units[-SHORT_WEEKS:]
+            products.append({
+                "id": code + "-short", "code": code,
+                "name": str(sub["name"].iloc[0]).title() + " (last %d weeks only)" % SHORT_WEEKS,
+                "medianPrice": float(sub["price"].iloc[0]),
+                "week": {"labels": weeks[-SHORT_WEEKS:], "history": short_units,
+                         "dist": _dist_payload(short_units, 52, seed=3000 + i)},
+                "month": None,
+            })
+    return products
+
+
+def backtest_table(df: pd.DataFrame) -> pd.DataFrame:
+    rows = []
+    for code, sub in df.groupby("product"):
+        units = [float(v) for v in sub.sort_values("week")["units"]]
+        bt = backtest(units, season=52)
+        if not bt:
+            continue
+        winner = min(bt, key=lambda m: bt[m]["mae"])
+        for method, v in bt.items():
+            rows.append({"product": code, "name": str(sub["name"].iloc[0]),
+                         "method": method, "mae": round(v["mae"], 2),
+                         "coverage80": round(v["coverage80"], 3),
+                         "origins": v["origins"], "winner": method == winner})
+    return pd.DataFrame(rows)
+
+
+def write_products_js(products: list[dict], path) -> None:
+    payload = json.dumps(products, separators=(",", ":"))
+    with open(path, "w") as f:
+        f.write("/* Built-in example products from Online Retail II (UCI, CC BY 4.0).\n")
+        f.write(" * Generated by scripts/build_data.py from src/orderplan/pipeline.py:\n")
+        f.write(" * weekly and monthly sales history plus the forecast distribution\n")
+        f.write(" * (method race, backtest, scenario draws) computed offline in Python.\n")
+        f.write(" * The raw dataset is not redistributed; see DATA_SOURCES.md. */\n")
+        f.write("window.ORDER_PRODUCTS = ")
+        f.write(payload)
+        f.write(";\n")

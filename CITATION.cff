@@ -1,0 +1,8 @@
+cff-version: 1.2.0
+message: "If you use this code, please cite it as below."
+title: "Order Quantity Planner: how many units to order"
+authors:
+  - family-names: "Golchin"
+    given-names: "Omid"
+license: MIT
+date-released: 2026-11-14

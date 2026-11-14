@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Order Quantity Planner: how many units to order</title>
+<meta name="description" content="Paste a product's sales history and prices and get the order quantity the math supports: expected profit, chance of running out, and the checks planners run first (critical ratio, forecast backtest, sold-out censoring, intermittent demand).">
+<script src="kit-theme.js"></script>
+<link rel="stylesheet" href="kit.css">
+<link rel="stylesheet" href="tool.css">
+</head>
+<body>
+<main>
+  <header class="kit-header">
+    <div class="kit-header-top">
+      <p class="kit-kicker">Omid Golchin · Decision tools</p>
+      <button type="button" class="kit-theme-toggle" aria-pressed="false">◐ Theme</button>
+    </div>
+    <h1>Order Quantity Planner</h1>
+    <p class="kit-tagline">You have a product whose demand you cannot predict exactly. Get the order quantity the math supports, with the checks a planner runs first.</p>
+  </header>
+
+  <div class="tool-modes" role="tablist" aria-label="Mode">
+    <button type="button" role="tab" id="tab-plan" class="active" aria-selected="true">Plan an order</button>
+    <button type="button" role="tab" id="tab-check" aria-selected="false">Check last period</button>
+  </div>
+
+  <!-- ================= PLAN ================= -->
+  <section id="view-plan">
+    <div class="work">
+      <form class="panel" id="f-plan" novalidate onsubmit="return false">
+        <div class="panel-head">
+          <h2>Your product</h2>
+          <select class="example" id="example" aria-label="Load an example">
+            <option value="">Load example…</option>
+          </select>
+        </div>
+        <div class="fields">
+          <div class="group-label">Sales history</div>
+          <div class="field full"><label for="history">Units sold per period <span class="muted">(one per line or comma-separated; optional second column: units stocked)</span></label>
+            <textarea id="history" rows="5" spellcheck="false"></textarea>
+            <div class="hint" id="historyHint"></div></div>
+          <div class="field"><label for="csvFile">…or upload a CSV <span class="muted">(date, units[, stock])</span></label>
+            <input id="csvFile" type="file" accept=".csv,text/csv"></div>
+          <div class="field"><label for="period">Period length</label>
+            <select id="period"><option value="week">Week</option><option value="month">Month</option></select></div>
+          <div class="group-label">Prices (per unit)</div>
+          <div class="field"><label for="price">Selling price</label><input id="price" type="number" min="0" step="any" inputmode="decimal"></div>
+          <div class="field"><label for="cost">What you pay per unit</label><input id="cost" type="number" min="0" step="any" inputmode="decimal"></div>
+          <div class="field"><label for="salvage">Unsold unit is worth</label><input id="salvage" type="number" min="0" step="any" inputmode="decimal"><div class="hint">Clearance, outlet, or 0 if it is thrown away.</div></div>
+          <div class="field"><label for="goodwill">Cost of a lost sale <span class="muted">(optional)</span></label><input id="goodwill" type="number" min="0" step="any" inputmode="decimal" placeholder="0"><div class="hint">Beyond the lost margin: annoyed customers, penalties.</div></div>
+        </div>
+        <div class="actions" style="margin-top:12px">
+          <button type="button" id="assistToggle">✦ Fill from my notes</button>
+          <span class="footnote">Paste a supplier email or a few lines of notes; an AI model fills the form, the tool does the math.</span>
+        </div>
+        <div id="assistMount"></div>
+      </form>
+
+      <div>
+        <section class="panel verdict" id="verdict" aria-live="polite">
+          <p class="v-kicker">Verdict</p>
+          <p class="v-title" id="vTitle">…</p>
+          <p class="v-body" id="vBody"></p>
+          <div class="kpis" id="kpis"></div>
+          <div class="checks" id="checksP" aria-label="Built-in checks"></div>
+        </section>
+        <div class="actions">
+          <button type="button" id="copySummary">Copy summary</button>
+          <button type="button" id="copyLink">Copy link</button>
+          <span class="toast" id="toastP"></span>
+        </div>
+      </div>
+    </div>
+
+    <section class="panel" style="margin-top:16px">
+      <h2>What each order quantity earns</h2>
+      <div class="svgchart" id="profitChart"></div>
+      <p class="chart-caption" id="profitCaption"></p>
+    </section>
+
+    <details class="more">
+      <summary>Forecast and backtest <span class="sub">which method, and how much to trust it</span></summary>
+      <div class="more-body">
+        <div class="svgchart" id="fanChart"></div>
+        <p class="chart-caption" id="fanCaption"></p>
+        <div class="table-scroll"><table id="tBacktest"></table></div>
+        <p class="small" id="forecastNote"></p>
+      </div>
+    </details>
+
+    <details class="more">
+      <summary>The full numbers <span class="sub">critical ratio, sensitivity, demand quantiles</span></summary>
+      <div class="more-body">
+        <div class="table-scroll"><table id="tFull"></table></div>
+      </div>
+    </details>
+
+    <details class="more">
+      <summary>How the verdict is decided <span class="sub">rules, formulas, sources</span></summary>
+      <div class="more-body small">
+        <p><b>The order quantity</b> is the newsvendor solution (Arrow, Harris &amp; Marschak 1951): order up to the demand quantile set by your economics, not to the forecast. One unit too many loses (cost − salvage); one unit too few loses (price − cost + goodwill). The balance point is the critical ratio, and the tool orders the smallest quantity whose chance of covering demand reaches it.</p>
+        <div class="formula">critical ratio = (price − cost + goodwill) / (price − salvage + goodwill)
+order = smallest Q with P(demand ≤ Q) ≥ critical ratio</div>
+        <p><b>The forecast is chosen by backtest, not by fit.</b> Seasonal naive, ETS and ARIMA forecast the last 8 periods one step at a time, each time using only the past (rolling origin; Hyndman &amp; Athanasopoulos, <i>Forecasting: Principles and Practice</i>, 3rd ed.). The lowest error wins, and its 80% interval coverage is shown: a method can win on error and still be overconfident. (In your browser, a pasted series races seasonal naive against ETS; the built-in products were also raced against ARIMA offline, by the Python reference implementation in this repository.)</p>
+        <p><b>Sold-out periods hide demand.</b> If a period sold exactly the stock on hand, demand was at least that high. With a stock column, those periods are replaced by draws from the sales seen at or above that level before anything is fit (a Kaplan–Meier style fix), which widens the top of the demand range instead of understating it.</p>
+        <p><b>Intermittent demand</b> (30% or more of periods at zero) breaks ETS and ARIMA assumptions, so the tool samples past periods directly and says so (Syntetos &amp; Boylan 2005).</p>
+        <p class="footnote">Where the numbers behind this tool came from (the 30-product backtest, the classic study this replaces): see <a href="https://github.com/omidgolchin/order-quantity-planner#research-notes">Research notes</a>.</p>
+      </div>
+    </details>
+  </section>
+
+  <!-- ================= CHECK ================= -->
+  <section id="view-check" hidden>
+    <div class="work">
+      <form class="panel" id="f-check" novalidate onsubmit="return false">
+        <div class="panel-head"><h2>Last period</h2></div>
+        <div class="fields">
+          <div class="field"><label for="cOrdered">Units you ordered</label><div class="input-wrap"><input id="cOrdered" type="number" min="0" step="1" inputmode="numeric"><span class="unit">units</span></div></div>
+          <div class="field"><label for="cSold">Units you sold</label><div class="input-wrap"><input id="cSold" type="number" min="0" step="1" inputmode="numeric"><span class="unit">units</span></div></div>
+          <div class="field"><label for="cRanOut">Did you run out?</label>
+            <select id="cRanOut"><option value="no">No, some were left</option><option value="yes">Yes, we sold out</option></select>
+            <div class="hint">Uses the product, prices and forecast from <b>Plan an order</b>.</div></div>
+        </div>
+      </form>
+      <div>
+        <section class="panel verdict" id="cVerdict" aria-live="polite">
+          <p class="v-kicker">Grade</p>
+          <p class="v-title" id="cTitle">…</p>
+          <p class="v-body" id="cBody"></p>
+          <div class="kpis" id="cKpis"></div>
+          <div class="checks" id="cChecks" aria-label="Built-in checks"></div>
+        </section>
+        <div class="actions">
+          <button type="button" id="cCopySummary">Copy summary</button>
+          <button type="button" id="cCopyLink">Copy link</button>
+          <span class="toast" id="toastC"></span>
+        </div>
+      </div>
+    </div>
+    <details class="more">
+      <summary>How last period is graded <span class="sub">what counts as money left on the table</span></summary>
+      <div class="more-body small">
+        <p>Your realized profit is computed from what actually sold. The plan's order is the recommendation from <b>Plan an order</b> for the same product and prices. "Left on the table" compares expected profit (over the whole demand distribution) at the plan's quantity against your quantity: one period is a single draw, so a good order can still lose money and a bad one can get lucky. If you sold out, your sales are a floor on demand, not demand itself: the grade says so instead of treating the period as fully observed.</p>
+      </div>
+    </details>
+  </section>
+
+  <footer class="kit-footer">
+    <p class="kit-siblings"><span class="kit-siblings-label">More tools:</span>
+      <a href="https://omidgolchin.github.io/bayesian-ab-lab/">A/B Test Decision Tool</a> ·
+      <a href="https://omidgolchin.github.io/queue-simulator/">Call Center Staffing Planner</a> ·
+      <a href="https://omidgolchin.github.io/experiment-hazard-simulator/">Agent Eval Planner</a> ·
+      <a href="https://omidgolchin.github.io/order-quantity-planner/" aria-current="page">Order Quantity Planner</a></p>
+    <p>Built by Omid Golchin · <a href="https://github.com/omidgolchin/order-quantity-planner">Code, tests and design decisions</a> · Everything runs in your browser; nothing you type is sent anywhere unless you use the AI fill with your own key.</p>
+  </footer>
+</main>
+<script src="newsvendor.js"></script>
+<script src="forecast.js"></script>
+<script src="data/products.js"></script>
+<script src="tool-common.js"></script>
+<script src="assist-config.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
