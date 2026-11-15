@@ -164,11 +164,11 @@
     $("verdict").className = "panel verdict v-" + cls;
     cur.title = title; cur.body = body;
     $("kpis").innerHTML = [
-      [F.int(plan.order), "units to order"],
+      [F.int(plan.order), "units to order", "cr"],
       [money(plan.expProfit), "expected profit"],
-      [F.pct(plan.stockoutProb, 0), "chance of running out"],
+      [F.pct(plan.stockoutProb, 0), "chance of running out", "stockout"],
       [F.num(plan.expLeftovers, 0), "expected leftovers"]
-    ].map(function (it) { return '<div class="kpi"><span class="k-val">' + it[0] + '</span><span class="k-lbl">' + it[1] + "</span></div>"; }).join("");
+    ].map(function (it) { return '<div class="kpi"><span class="k-val">' + it[0] + '</span><span class="k-lbl">' + it[1] + (it[2] ? ' <button type="button" data-tip="' + it[2] + '"></button>' : "") + "</span></div>"; }).join("");
   }
 
   function renderChecks() {
@@ -322,8 +322,8 @@
       [F.int(r.planOrder), "plan's order"],
       [F.int(ordered), "your order"],
       [money(r.realizedProfit), "your realized profit"],
-      [money(Math.max(0, gap)), "expected gap to the plan"]
-    ].map(function (it) { return '<div class="kpi"><span class="k-val">' + it[0] + '</span><span class="k-lbl">' + it[1] + "</span></div>"; }).join("");
+      [money(Math.max(0, gap)), "expected gap to the plan", "gap"]
+    ].map(function (it) { return '<div class="kpi"><span class="k-val">' + it[0] + '</span><span class="k-lbl">' + it[1] + (it[2] ? ' <button type="button" data-tip="' + it[2] + '"></button>' : "") + "</span></div>"; }).join("");
     var cks = [];
     cks.push(ranOut
       ? ["warn", "SOLD OUT", "Censored demand", "You ran out, so this period's sales hide its demand. In Plan an order, a stock column would uncensor periods like this one."]
@@ -482,6 +482,17 @@
     if (state.cOrdered !== "") $("cOrdered").value = state.cOrdered;
     if (state.cSold !== "") $("cSold").value = state.cSold;
     if (state.cRanOut) $("cRanOut").value = state.cRanOut;
+    Tool.explain({
+      demand: { t: "Why the sales history matters", d: "The right order depends on the whole spread of possible demand, not just the average. The tool fits several forecasts to your history, keeps the one that predicted your own past periods best (a backtest), and uses its errors to estimate how uncertain next period is." },
+      salvage: { t: "Salvage value", d: "What an unsold unit is worth at the end of the period: clearance price, outlet value, or 0 if it is thrown away. High salvage makes overstocking cheap, so the tool orders more." },
+      goodwill: { t: "Cost of a lost sale", d: "Anything you lose beyond the margin when a customer finds you sold out, such as a customer who does not come back. It makes running out more expensive, so the tool orders more. Leave it at 0 if you are unsure." },
+      cr: { t: "How the order size is chosen", d: "This is the newsvendor problem. Order until one more unit is as likely to lose money as to make it. That happens at the <i>critical ratio</i>: underage cost ÷ (underage + overage), where underage = price − cost (+ lost-sale cost) and overage = cost − salvage. The order is the demand level with that probability of not being exceeded." },
+      stockout: { t: "Chance of running out", d: "The probability that demand next period exceeds the order. Ordering for zero stockouts is almost never profitable; the right level depends on your margins." },
+      gap: { t: "Gap to the plan", d: "How much more profit the plan's order would have earned on average than your order, given what was known before the period. It grades the decision, not the luck of one period." },
+      censored: { t: "Sold-out periods", d: "When you sell out, true demand was at least what you sold, maybe more. Treating that period as exact demand underestimates demand and leads to ordering too little next time. The tool treats sold-out periods as 'at least'." },
+      curve: { t: "Profit by order size", d: "For every order size, the average profit over thousands of simulated demand draws from the forecast. The peak is the best order. A flat top means you have room; a steep side shows which mistake (too few or too many) costs more." }
+    });
+
     setMode(state.mode === "check" ? "check" : "plan");
   })();
 })();

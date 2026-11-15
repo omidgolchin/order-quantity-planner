@@ -24,13 +24,21 @@
     <p class="kit-tagline">You have a product whose demand you cannot predict exactly. Get the order quantity the math supports, with the checks a planner runs first.</p>
   </header>
 
-  <div class="tool-modes" role="tablist" aria-label="Mode">
+  <div class="tool-modes" role="tablist" aria-label="What do you want to do?">
     <button type="button" role="tab" id="tab-plan" class="active" aria-selected="true">Plan an order</button>
     <button type="button" role="tab" id="tab-check" aria-selected="false">Check last period</button>
   </div>
 
   <!-- ================= PLAN ================= -->
-  <section id="view-plan">
+  <section id="view-plan" role="tabpanel" aria-labelledby="tab-plan">
+    <div class="guide" aria-label="How to use this mode">
+      <ol class="steps">
+        <li><b>Paste your sales history</b>: units sold in each past week or month. The tool forecasts the next period from it.</li>
+        <li><b>Enter your prices</b>: what you sell at, what you pay, and what a leftover unit is still worth.</li>
+        <li><b>Get the order</b>: how many units to buy, the profit to expect, and the chance of running out. The chart shows the profit of every other order size.</li>
+      </ol>
+      <p class="also"><b>Also here:</b> <i>Check last period</i> grades an order you already placed · <i>Fill from my description</i> reads pasted notes · <i>Forecast and backtest</i> shows which forecast was picked and how well it did on your own past data.</p>
+    </div>
     <div class="work">
       <form class="panel" id="f-plan" novalidate onsubmit="return false">
         <div class="panel-head">
@@ -41,18 +49,18 @@
         </div>
         <div class="fields">
           <div class="group-label">Sales history</div>
-          <div class="field full"><label for="history">Units sold per period <span class="muted">(one per line or comma-separated; optional second column: units stocked)</span></label>
+          <div class="field full"><label for="history">Units sold per period <button type="button" data-tip="demand"></button> <span class="muted">(one per line or comma-separated; optional second column: units stocked)</span></label>
             <textarea id="history" rows="5" spellcheck="false"></textarea>
-            <div class="hint" id="historyHint"></div></div>
+            <div class="hint" id="historyHint">Most recent last. At least 8 periods; a year or more lets the tool find seasonality. If you sold out in some periods, add the units you had in a second column so those periods count as "at least" that many.</div></div>
           <div class="field full"><label for="csvFile">…or upload a CSV <span class="muted">(date, units[, stock])</span></label>
-            <input id="csvFile" type="file" accept=".csv,text/csv"></div>
+            <input id="csvFile" type="file" accept=".csv,text/csv"><div class="hint">A spreadsheet export works: a date column, then units sold, then (optional) units stocked.</div></div>
           <div class="field"><label for="period">Period length</label>
-            <select id="period"><option value="week">Week</option><option value="month">Month</option></select></div>
+            <select id="period"><option value="week">Week</option><option value="month">Month</option></select><div class="hint">The length of one ordering cycle: how often you place this order.</div></div>
           <div class="group-label">Prices (per unit, any currency)</div>
-          <div class="field"><label for="price">Selling price</label><input id="price" type="number" min="0" step="any" inputmode="decimal"></div>
-          <div class="field"><label for="cost">What you pay per unit</label><input id="cost" type="number" min="0" step="any" inputmode="decimal"></div>
-          <div class="field"><label for="salvage">Unsold unit is worth</label><input id="salvage" type="number" min="0" step="any" inputmode="decimal"><div class="hint">Clearance, outlet, or 0 if it is thrown away. If leftovers keep for next period, use what they are worth then: about the unit cost less what holding them costs.</div></div>
-          <div class="field"><label for="goodwill">Cost of a lost sale <span class="muted">(optional)</span></label><input id="goodwill" type="number" min="0" step="any" inputmode="decimal" placeholder="0"><div class="hint">Beyond the lost margin: annoyed customers, penalties.</div></div>
+          <div class="field"><label for="price">Selling price</label><input id="price" type="number" min="0" step="any" inputmode="decimal"><div class="hint">What a customer pays for one unit.</div></div>
+          <div class="field"><label for="cost">What you pay per unit</label><input id="cost" type="number" min="0" step="any" inputmode="decimal"><div class="hint">Your purchase or production cost for one unit.</div></div>
+          <div class="field"><label for="salvage">Unsold unit is worth <button type="button" data-tip="salvage"></button></label><input id="salvage" type="number" min="0" step="any" inputmode="decimal"><div class="hint">Clearance, outlet, or 0 if it is thrown away. If leftovers keep for next period, use what they are worth then: about the unit cost less what holding them costs.</div></div>
+          <div class="field"><label for="goodwill">Cost of a lost sale <button type="button" data-tip="goodwill"></button> <span class="muted">(optional)</span></label><input id="goodwill" type="number" min="0" step="any" inputmode="decimal" placeholder="0"><div class="hint">Beyond the lost margin: annoyed customers, penalties.</div></div>
         </div>
         <div class="actions" style="margin-top:12px">
           <button type="button" id="assistToggle">✦ Fill from my notes</button>
@@ -78,7 +86,7 @@
     </div>
 
     <section class="panel" style="margin-top:16px">
-      <h2>What each order quantity earns</h2>
+      <h2>What each order quantity earns <button type="button" data-tip="curve"></button></h2>
       <div class="svgchart" id="profitChart"></div>
       <p class="chart-caption" id="profitCaption"></p>
     </section>
@@ -115,14 +123,21 @@ order = smallest Q with P(demand ≤ Q) ≥ critical ratio</div>
   </section>
 
   <!-- ================= CHECK ================= -->
-  <section id="view-check" hidden>
+  <section id="view-check" role="tabpanel" aria-labelledby="tab-check" hidden>
+    <div class="guide" aria-label="How to use this mode">
+      <ol class="steps">
+        <li><b>Enter what you ordered and sold</b> last period, and whether you ran out.</li>
+        <li><b>The tool replays the decision</b> with the product and prices from <i>Plan an order</i>.</li>
+        <li><b>Read the grade</b>: whether the order was sound given what you knew, and how much it cost compared with the plan.</li>
+      </ol>
+    </div>
     <div class="work">
       <form class="panel" id="f-check" novalidate onsubmit="return false">
         <div class="panel-head"><h2>Last period</h2></div>
         <div class="fields">
-          <div class="field"><label for="cOrdered">Units you ordered</label><div class="input-wrap"><input id="cOrdered" type="number" min="0" step="1" inputmode="numeric"><span class="unit">units</span></div></div>
-          <div class="field"><label for="cSold">Units you sold</label><div class="input-wrap"><input id="cSold" type="number" min="0" step="1" inputmode="numeric"><span class="unit">units</span></div></div>
-          <div class="field"><label for="cRanOut">Did you run out?</label>
+          <div class="field"><label for="cOrdered">Units you ordered</label><div class="input-wrap"><input id="cOrdered" type="number" min="0" step="1" inputmode="numeric"><span class="unit">units</span></div><div class="hint">Units you bought for that period.</div></div>
+          <div class="field"><label for="cSold">Units you sold</label><div class="input-wrap"><input id="cSold" type="number" min="0" step="1" inputmode="numeric"><span class="unit">units</span></div><div class="hint">Units actually sold. If you sold out, this equals what you ordered.</div></div>
+          <div class="field"><label for="cRanOut">Did you run out? <button type="button" data-tip="censored"></button></label>
             <select id="cRanOut"><option value="no">No, some were left</option><option value="yes">Yes, we sold out</option></select>
             <div class="hint">Uses the product, prices and forecast from <b>Plan an order</b>.</div></div>
         </div>
@@ -151,11 +166,7 @@ order = smallest Q with P(demand ≤ Q) ≥ critical ratio</div>
   </section>
 
   <footer class="kit-footer">
-    <p class="kit-siblings"><span class="kit-siblings-label">More tools:</span>
-      <a href="https://omidgolchin.github.io/bayesian-ab-lab/">A/B Test Decision Tool</a> ·
-      <a href="https://omidgolchin.github.io/queue-simulator/">Call Center Staffing Planner</a> ·
-      <a href="https://omidgolchin.github.io/experiment-hazard-simulator/">Agent Eval Planner</a> ·
-      <a href="https://omidgolchin.github.io/order-quantity-planner/" aria-current="page">Order Quantity Planner</a></p>
+    <p class="kit-siblings"></p>
     <p>Built by Omid Golchin · <a href="https://github.com/omidgolchin/order-quantity-planner">Code, tests and design decisions</a> · Everything runs in your browser; nothing you type is sent anywhere unless you use the AI fill with your own key.</p>
   </footer>
 </main>

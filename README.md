@@ -2,9 +2,9 @@
 
 A planner that turns a product's sales history into an order quantity: the newsvendor optimum for your price, cost and salvage, with the demand forecast chosen by backtest on the product's own history, and the risk of the order shown next to the number.
 
-![The planner recommending an order, with the profit curve and the verdict checks](docs/hero.gif)
+![The planner on three products (a steady seller, a seasonal product, a shop that sold out most weeks), how the order size is chosen, and the check of last period's order](docs/hero.gif)
 
-![Desktop view of the Order Quantity Planner](docs/screenshots/desktop.png)
+![The planner on a desktop: the three-step guide, the inputs with a hint under each, and the recommended order](docs/screenshots/desktop.png)
 
 **Use it:** https://omidgolchin.github.io/order-quantity-planner/ (runs in your browser; nothing you type leaves it)
 
@@ -33,6 +33,7 @@ Two modes:
 - **Check last period** — enter what you ordered and sold; the planner
   grades it against the plan for the same demand, in expectation, so
   one lucky or unlucky period is not mistaken for a good or bad order.
+- **Help where you need it.** Each mode opens with three steps saying what to enter and what you get; every input has a line under it saying what the number is, why it matters and where to find it; and every technical term in the inputs and results has a **?** that opens a plain-language explanation.
 
 Built-in examples come from the Online Retail II dataset (UCI, CC BY
 4.0; see DATA_SOURCES.md): a steady seller, a strongly seasonal
