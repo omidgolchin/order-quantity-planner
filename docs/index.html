@@ -8,6 +8,10 @@
 <script src="kit-theme.js"></script>
 <link rel="stylesheet" href="kit.css">
 <link rel="stylesheet" href="tool.css">
+<style>
+  #history { width: 100%; box-sizing: border-box; min-height: 110px; font: inherit; font-size: var(--fs-small); font-variant-numeric: tabular-nums; color: var(--fg); background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 6px 8px; }
+  #csvFile { max-width: 100%; font-size: var(--fs-small); }
+</style>
 </head>
 <body>
 <main>
@@ -40,14 +44,14 @@
           <div class="field full"><label for="history">Units sold per period <span class="muted">(one per line or comma-separated; optional second column: units stocked)</span></label>
             <textarea id="history" rows="5" spellcheck="false"></textarea>
             <div class="hint" id="historyHint"></div></div>
-          <div class="field"><label for="csvFile">…or upload a CSV <span class="muted">(date, units[, stock])</span></label>
+          <div class="field full"><label for="csvFile">…or upload a CSV <span class="muted">(date, units[, stock])</span></label>
             <input id="csvFile" type="file" accept=".csv,text/csv"></div>
           <div class="field"><label for="period">Period length</label>
             <select id="period"><option value="week">Week</option><option value="month">Month</option></select></div>
-          <div class="group-label">Prices (per unit)</div>
+          <div class="group-label">Prices (per unit, any currency)</div>
           <div class="field"><label for="price">Selling price</label><input id="price" type="number" min="0" step="any" inputmode="decimal"></div>
           <div class="field"><label for="cost">What you pay per unit</label><input id="cost" type="number" min="0" step="any" inputmode="decimal"></div>
-          <div class="field"><label for="salvage">Unsold unit is worth</label><input id="salvage" type="number" min="0" step="any" inputmode="decimal"><div class="hint">Clearance, outlet, or 0 if it is thrown away.</div></div>
+          <div class="field"><label for="salvage">Unsold unit is worth</label><input id="salvage" type="number" min="0" step="any" inputmode="decimal"><div class="hint">Clearance, outlet, or 0 if it is thrown away. If leftovers keep for next period, use what they are worth then: about the unit cost less what holding them costs.</div></div>
           <div class="field"><label for="goodwill">Cost of a lost sale <span class="muted">(optional)</span></label><input id="goodwill" type="number" min="0" step="any" inputmode="decimal" placeholder="0"><div class="hint">Beyond the lost margin: annoyed customers, penalties.</div></div>
         </div>
         <div class="actions" style="margin-top:12px">

@@ -50,12 +50,14 @@
     return sortedVals[lo] + (sortedVals[hi] - sortedVals[lo]) * (k - lo);
   }
 
-  function profitCurve(draws, price, cost, salvage, goodwill, points) {
+  /* hiQ (optional) caps the quantities shown; by default the curve runs to
+   * the 99.5th percentile of demand. */
+  function profitCurve(draws, price, cost, salvage, goodwill, points, hiQ) {
     goodwill = goodwill || 0; points = points || 61;
     var out = { q: [], mean: [], p5: [], p95: [] };
     if (!draws.length) return out;
     var s = sortedDraws(draws);
-    var lo = 0, hi = Math.ceil(percentile(s, 0.995));
+    var lo = 0, hi = hiQ != null ? hiQ : Math.ceil(percentile(s, 0.995));
     if (hi <= lo) hi = lo + 1;
     var seen = {}, qs = [];
     for (var i = 0; i < points; i++) {

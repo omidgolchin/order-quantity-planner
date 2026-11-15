@@ -32,6 +32,8 @@
   function debounce(fn, ms) { var t; return function () { clearTimeout(t); t = setTimeout(fn, ms); }; }
   function num(id) { var v = $(id).value; return v === "" ? null : Number(v); }
   function amt(x) { return (x < 0 ? "−" : "") + F.num(Math.abs(x), Math.abs(x) >= 100 ? 0 : 2); }
+  /* profits and totals: whole currency units once they are past 10 */
+  function money(x) { return (x < 0 ? "−" : "") + F.num(Math.abs(x), Math.abs(x) >= 10 ? 0 : 2); }
   function fieldError(id, msg) {
     var f = $(id).closest(".field"); if (!f) return;
     var e = f.querySelector(".err");
@@ -135,9 +137,9 @@
     if (Math.abs(diff) < Math.max(1, 0.005 * Math.abs(plan.expProfit))) {
       fcLine = "Ordering exactly the forecast (" + F.int(Math.round(plan.forecast)) + ") earns about the same.";
     } else if (plan.order > Math.round(plan.forecast)) {
-      fcLine = "Ordering exactly the forecast (" + F.int(Math.round(plan.forecast)) + ") would earn " + amt(diff) + " less on average, because a lost sale costs you more than a leftover.";
+      fcLine = "Ordering exactly the forecast (" + F.int(Math.round(plan.forecast)) + ") would earn " + money(diff) + " less on average, because a lost sale costs you more than a leftover.";
     } else {
-      fcLine = "Ordering exactly the forecast (" + F.int(Math.round(plan.forecast)) + ") would earn " + amt(diff) + " less on average, because a leftover costs you more than a lost sale.";
+      fcLine = "Ordering exactly the forecast (" + F.int(Math.round(plan.forecast)) + ") would earn " + money(diff) + " less on average, because a leftover costs you more than a lost sale.";
     }
     var zeroNote = plan.order === 0
       ? "At these prices the math says do not stock: " + (dist.intermittent
@@ -150,12 +152,12 @@
       body = "Each unit sells for " + amt(v.price) + " and costs " + amt(v.cost) + ", so every sale loses money before leftovers are even counted. Fix the price or the cost first; the numbers below show what the math gives if you ordered anyway.";
     } else if (plan.state === "warn") {
       title = "Order " + F.int(plan.order) + " units, but treat it as a rough guide";
-      body = zeroNote + "The history behind this is thin (" + plan.reasons.join(" and ") + "), so the spread is wide and the forecast is shaky. Expected profit " + amt(plan.expProfit) +
-        " (5th to 95th percentile: " + amt(plan.profitP5) + " to " + amt(plan.profitP95) + "). Chance of running out: " + F.pct(plan.stockoutProb, 0) +
+      body = zeroNote + "The history behind this is thin (" + plan.reasons.join(" and ") + "), so the spread is wide and the forecast is shaky. Expected profit " + money(plan.expProfit) +
+        " (5th to 95th percentile: " + money(plan.profitP5) + " to " + money(plan.profitP95) + "). Chance of running out: " + F.pct(plan.stockoutProb, 0) +
         ". Expected leftovers: " + F.num(plan.expLeftovers, 0) + " units. " + fcLine;
     } else {
       title = "Order " + F.int(plan.order) + " units";
-      body = zeroNote + "Expected profit " + amt(plan.expProfit) + " (5th to 95th percentile: " + amt(plan.profitP5) + " to " + amt(plan.profitP95) +
+      body = zeroNote + "Expected profit " + money(plan.expProfit) + " (5th to 95th percentile: " + money(plan.profitP5) + " to " + money(plan.profitP95) +
         "). Chance of running out: " + F.pct(plan.stockoutProb, 0) + ". Expected leftovers: " + F.num(plan.expLeftovers, 0) + " units. " + fcLine;
     }
     $("vTitle").textContent = title; $("vBody").textContent = body;
@@ -163,7 +165,7 @@
     cur.title = title; cur.body = body;
     $("kpis").innerHTML = [
       [F.int(plan.order), "units to order"],
-      [amt(plan.expProfit), "expected profit"],
+      [money(plan.expProfit), "expected profit"],
       [F.pct(plan.stockoutProb, 0), "chance of running out"],
       [F.num(plan.expLeftovers, 0), "expected leftovers"]
     ].map(function (it) { return '<div class="kpi"><span class="k-val">' + it[0] + '</span><span class="k-lbl">' + it[1] + "</span></div>"; }).join("");
@@ -207,7 +209,12 @@
 
   function renderChart() {
     var plan = cur.plan, v = cur.prices;
-    var curve = Newsvendor.profitCurve(cur.dist.draws, v.price, v.cost, v.salvage, v.goodwill);
+    /* show the region a decision lives in: up to about twice the larger of
+     * the order and the forecast, never past the 99.5th demand percentile */
+    var sorted = cur.dist.draws.slice().sort(function (a, b) { return a - b; });
+    var top = Math.ceil(Newsvendor.percentile(sorted, 0.995));
+    var hiQ = Math.max(10, Math.min(top, Math.ceil(2.2 * Math.max(plan.order, plan.forecast, 1))));
+    var curve = Newsvendor.profitCurve(cur.dist.draws, v.price, v.cost, v.salvage, v.goodwill, 61, hiQ);
     var pts = curve.q.map(function (q, i) { return [q, curve.mean[i]]; });
     var p5 = curve.q.map(function (q, i) { return [q, curve.p5[i]]; });
     var p95 = curve.q.map(function (q, i) { return [q, curve.p95[i]]; });
@@ -219,10 +226,13 @@
         { label: "95th percentile", color: "neutral", points: p95, dash: "5 4" },
         { label: "5th percentile", color: "neutral", points: p5, dash: "5 4" }
       ],
-      vLines: [{ x: plan.order, label: "order " + F.int(plan.order), color: "accent" },
-               { x: Math.round(plan.forecast), label: "forecast " + F.int(Math.round(plan.forecast)), color: "series2" }],
+      vLines: (function () {
+        var fq = Math.round(plan.forecast), close = Math.abs(fq - plan.order) < 0.22 * hiQ;
+        return [{ x: plan.order, label: "order " + F.int(plan.order) + (close ? " · forecast " + F.int(fq) + " (orange)" : ""), color: "accent" },
+                { x: fq, label: close ? "" : "forecast " + F.int(fq), color: "series2" }];
+      })(),
       xTitle: "units ordered", yTitle: "profit for the period", legend: true, height: 260,
-      xFormat: function (x) { return F.int(x); }, yFormat: function (y) { return amt(y); }
+      xFormat: function (x) { return F.int(x); }, yFormat: function (y) { return (y < 0 ? "−" : "") + F.int(Math.abs(y)); }
     });
     $("profitCaption").textContent = "The dashed lines are the 5th and 95th percentiles of profit at each quantity: the spread is the risk the verdict weighs. The curve peaks at the recommended order.";
   }
@@ -241,8 +251,8 @@
         { label: "Next " + v.period + " forecast (95% range)", color: "series2", points: [[n, dist.forecast]],
           ci: [[quantile(drawsSorted, 0.025), quantile(drawsSorted, 0.975)]], markersOnly: true, markers: true }
       ],
-      xTitle: v.period + "s back from today", yTitle: "units sold", legend: true, height: 240,
-      xFormat: function (x) { return x >= n ? "next" : String(Math.round(x)); },
+      xTitle: v.period + " (oldest first)", yTitle: "units sold", legend: true, height: 240,
+      xFormat: function (x) { return x >= n ? "next" : String(Math.round(x) + 1); },
       yFormat: function (y) { return F.int(y); }
     });
     $("fanCaption").textContent = "Next " + v.period + ": median demand " + F.int(quantile(drawsSorted, 0.5)) +
@@ -268,7 +278,7 @@
       ["Critical ratio", F.pct(plan.ratio, 1)],
       ["Forecast for next " + v.period, F.int(Math.round(plan.forecast)) + " units"],
       ["Recommended order", F.int(plan.order) + " units"],
-      ["Expected profit at the recommended order", amt(plan.expProfit)],
+      ["Expected profit at the recommended order", money(plan.expProfit)],
       ["Expected profit at the forecast itself", amt(plan.profitAtForecast)],
       ["Expected units sold", F.num(plan.order - plan.expLeftovers, 0)],
       ["Expected leftovers", F.num(plan.expLeftovers, 1) + " units"],
@@ -298,12 +308,12 @@
     var gap = r.leftOnTable, tol = Math.max(1, 0.02 * Math.abs(r.expProfitPlan));
     var title, cls = "good";
     if (ranOut && ordered < r.planOrder) { title = "You ordered too few, and sold out"; cls = "warn"; }
-    else if (gap > tol) { title = "You left about " + amt(gap) + " on the table"; cls = "warn"; }
+    else if (gap > tol) { title = "You left about " + money(gap) + " on the table"; cls = "warn"; }
     else if (ordered > r.planOrder && !ranOut && sold < ordered) { title = "You ordered more than the plan, and it shows"; cls = "warn"; }
     else title = "Close to the plan";
     var body = "The plan would have ordered " + F.int(r.planOrder) + " units; you ordered " + F.int(ordered) + " and sold " + F.int(sold) +
-      ". Your realized profit was " + amt(r.realizedProfit) + ". In expectation (one period is a single draw, so luck plays its part), your quantity earns " +
-      amt(r.expProfitYours) + " against the plan's " + amt(r.expProfitPlan) + "." +
+      ". Your realized profit was " + money(r.realizedProfit) + ". In expectation (one period is a single draw, so luck plays its part), your quantity earns " +
+      money(r.expProfitYours) + " against the plan's " + money(r.expProfitPlan) + "." +
       (ranOut ? " Because you sold out, demand was at least " + F.int(ordered) + " units: your sales are a floor on demand, not demand itself." : "");
     $("cTitle").textContent = title; $("cBody").textContent = body;
     $("cVerdict").className = "panel verdict v-" + cls;
@@ -311,8 +321,8 @@
     $("cKpis").innerHTML = [
       [F.int(r.planOrder), "plan's order"],
       [F.int(ordered), "your order"],
-      [amt(r.realizedProfit), "your realized profit"],
-      [amt(Math.max(0, gap)), "expected gap to the plan"]
+      [money(r.realizedProfit), "your realized profit"],
+      [money(Math.max(0, gap)), "expected gap to the plan"]
     ].map(function (it) { return '<div class="kpi"><span class="k-val">' + it[0] + '</span><span class="k-lbl">' + it[1] + "</span></div>"; }).join("");
     var cks = [];
     cks.push(ranOut
@@ -320,7 +330,7 @@
       : ["ok", "OK", "Stock-out", "You did not run out, so this period's demand is fully observed."]);
     cks.push(ordered === r.planOrder
       ? ["ok", "MATCH", "Against the plan", "You ordered exactly what the plan recommends."]
-      : ["info", "NOTE", "Against the plan", "You ordered " + Math.abs(ordered - r.planOrder) + (ordered > r.planOrder ? " more" : " fewer") + " than the plan. The expected cost of that gap is " + amt(Math.max(0, gap)) + " a period."]);
+      : ["info", "NOTE", "Against the plan", "You ordered " + Math.abs(ordered - r.planOrder) + (ordered > r.planOrder ? " more" : " fewer") + " than the plan. The expected cost of that gap is " + money(Math.max(0, gap)) + " a period."]);
     cks.push(["info", "ONE DRAW", "Luck", "A single period cannot prove an order was wrong: judge the rule over many periods, not this one."]);
     $("cChecks").innerHTML = cks.map(function (c) {
       return '<div class="check is-' + c[0] + '"><span class="badge">' + c[1] + '</span><div><span class="c-name">' + c[2] + '.</span> <span class="c-text">' + c[3] + "</span></div></div>";
@@ -344,7 +354,16 @@
     $("tab-plan").classList.toggle("active", m === "plan"); $("tab-plan").setAttribute("aria-selected", m === "plan");
     $("tab-check").classList.toggle("active", m === "check"); $("tab-check").setAttribute("aria-selected", m === "check");
     $("view-plan").hidden = m !== "plan"; $("view-check").hidden = m !== "check";
-    if (m === "check") { if (!cur) runPlan(); runCheck(); } else runPlan();
+    if (m === "check") {
+      if (!cur) runPlan();
+      /* first visit: start from the common habit, ordering the forecast,
+       * against the last period's sales, so the grade has something to say */
+      if (cur && $("cOrdered").value === "" && $("cSold").value === "") {
+        var fq = Math.round(cur.plan.forecast), last = cur.series.length ? Math.round(cur.series[cur.series.length - 1]) : 0;
+        $("cOrdered").value = fq; $("cSold").value = Math.min(fq, last); $("cRanOut").value = last >= fq ? "yes" : "no";
+      }
+      runCheck();
+    } else runPlan();
   }
   $("tab-plan").addEventListener("click", function () { setMode("plan"); });
   $("tab-check").addEventListener("click", function () { setMode("check"); });
