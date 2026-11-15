@@ -1,6 +1,6 @@
 # Order Quantity Planner
 
-A planner that turns a product's sales history into an order quantity: the newsvendor optimum for your price, cost and salvage, with the demand forecast chosen by backtest on the product's own history, and the risk of the order shown next to the number.
+For anyone who buys stock for a product whose demand they cannot predict exactly: paste the product's past sales and your prices, and get how many units to order, the profit to expect, and the chance of running out. Too few and you lose sales; too many and you are left with stock. The planner finds the order where those two risks balance for your margins, using a forecast chosen by testing it on the product's own past.
 
 ![The planner on three products (a steady seller, a seasonal product, a shop that sold out most weeks), how the order size is chosen, and the check of last period's order](docs/hero.gif)
 
@@ -11,19 +11,28 @@ A planner that turns a product's sales history into an order quantity: the newsv
 ## What it does
 
 Ordering for one period is a bet: order too few and you lose sales (and
-customers), order too many and you eat the leftovers. The newsvendor
-model prices that bet. The critical ratio,
+customers), order too many and you eat the leftovers. How much of each
+risk is worth taking depends on your margins. If a lost sale costs you
+much more than a leftover, you should order well above the forecast;
+if leftovers are expensive, below it.
+
+The math behind it is the newsvendor model. Its critical ratio,
 
 > (price − cost + goodwill) / (price − salvage + goodwill),
 
-says which quantile of next period's demand to order. This planner
-builds that demand distribution from the product's own history: a
-forecast method is chosen by rolling-origin backtest (seasonal naive
+is the share of periods your order should cover: you order the amount
+of demand that is not exceeded that often (that demand quantile). This
+planner builds the demand distribution from the product's own history:
+a forecast method is chosen by rolling-origin backtest (seasonal naive
 vs ETS vs ARIMA, lowest one-step error wins), its point forecast is
 spread by its own residuals into scenarios, and every figure on the
 page is computed from those scenarios, so the order, the expected
 profit, the stock-out chance and the leftovers all describe the same
 distribution.
+
+History: the planner runs from 3 periods, races forecast methods from
+20, and trusts the forecast fully from 26 weeks (12 months) with at
+least 12 periods of sales.
 
 Two modes:
 

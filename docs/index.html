@@ -51,7 +51,7 @@
           <div class="group-label">Sales history</div>
           <div class="field full"><label for="history">Units sold per period <button type="button" data-tip="demand"></button> <span class="muted">(one per line or comma-separated; optional second column: units stocked)</span></label>
             <textarea id="history" rows="5" spellcheck="false"></textarea>
-            <div class="hint" id="historyHint">Most recent last. At least 8 periods; a year or more lets the tool find seasonality. If you sold out in some periods, add the units you had in a second column so those periods count as "at least" that many.</div></div>
+            <div class="hint" id="historyHint"></div><div class="hint">One number per period, most recent last. The tool runs from 3 periods, races forecast methods from 20, and trusts the forecast fully from 26 weeks (12 months). If you sold out in some periods, add the units you had as a second column so those periods count as "at least" that many.</div></div>
           <div class="field full"><label for="csvFile">…or upload a CSV <span class="muted">(date, units[, stock])</span></label>
             <input id="csvFile" type="file" accept=".csv,text/csv"><div class="hint">A spreadsheet export works: a date column, then units sold, then (optional) units stocked.</div></div>
           <div class="field"><label for="period">Period length</label>

@@ -78,6 +78,7 @@
       $("price").value = pr.price; $("cost").value = pr.cost; $("salvage").value = pr.salvage; $("goodwill").value = "";
     }
     $("historyHint").textContent = p.name + " · " + slot.history.length + " " + per + "s of sales (Online Retail II, UCI, CC BY 4.0). Prices start at the product's median price; cost at 60% of it.";
+    Tool.exampleBanner($("f-plan"), "<b>" + p.name + "</b>: real sales from a UK giftware shop, with prices set by formula. Paste your own history and prices over it; the verdict updates as you type.");
   }
   function currentDist(series, stock, period) {
     if (source.type === "product") {
@@ -173,9 +174,9 @@
 
   function renderChecks() {
     var plan = cur.plan, v = cur.prices, dist = cur.dist, out = [];
-    out.push(["info", "RATIO", "Critical ratio", "Your prices aim to cover demand " + F.pct(plan.ratio, 0) + " of the time: (" +
+    out.push(["info", "ORDER LEVEL", "Critical ratio", "Your prices aim to cover demand " + F.pct(plan.ratio, 0) + " of the time: (" +
       amt(v.price) + " − " + amt(v.cost) + (v.goodwill ? " + " + amt(v.goodwill) : "") + ") / (" + amt(v.price) + " − " + amt(v.salvage) +
-      (v.goodwill ? " + " + amt(v.goodwill) : "") + "). The order is the demand quantile at that level."]);
+      (v.goodwill ? " + " + amt(v.goodwill) : "") + "). The order is the demand quantile <button type=\"button\" data-tip=\"quantile\"></button> at that level: the amount that demand stays at or below " + F.pct(plan.ratio, 0) + " of the time."]);
     if (dist.intermittent) {
       out.push(["warn", "SPARSE", "Intermittent demand", F.pct(dist.zeroShare, 0) + " of periods sold nothing, so ETS and ARIMA are set aside: the plan samples your past periods directly."]);
     } else if (dist.backtest) {
@@ -197,7 +198,7 @@
       out.push(["info", "NOTE", "Censored demand", "No stock column, so sales are taken at face value. If you sold out in some periods, add a second column with the stock you held: those sales hide demand."]);
     }
     if (plan.state === "warn") {
-      out.push(["warn", "THIN", "History", "Only " + cur.series.length + " periods (" + cur.series.filter(function (x) { return x > 0; }).length + " with any sales). More history would tighten this a lot."]);
+      out.push(["warn", "THIN", "History", "Only " + cur.series.length + " periods (" + cur.series.filter(function (x) { return x > 0; }).length + " with any sales). The tool runs from 3 periods, races forecast methods from 20, and trusts the forecast fully from " + (cur.prices.period === "month" ? "12 months" : "26 weeks") + " with at least 12 periods of sales."]);
     } else if (plan.state === "good") {
       out.push(["ok", "OK", "History", cur.series.length + " periods: enough to race the forecast methods and judge the winner."]);
     }
@@ -311,7 +312,10 @@
     else if (gap > tol) { title = "You left about " + money(gap) + " on the table"; cls = "warn"; }
     else if (ordered > r.planOrder && !ranOut && sold < ordered) { title = "You ordered more than the plan, and it shows"; cls = "warn"; }
     else title = "Close to the plan";
-    var body = "The plan would have ordered " + F.int(r.planOrder) + " units; you ordered " + F.int(ordered) + " and sold " + F.int(sold) +
+    var basis = (source.type === "product" && byId[source.id] ? byId[source.id].name : "your pasted sales history") +
+      " at price " + amt(v.price) + ", cost " + amt(v.cost) + ", leftover worth " + amt(v.salvage) + (v.goodwill ? ", lost-sale cost " + amt(v.goodwill) : "");
+    var body = "Graded against " + basis + ", taken from Plan an order; change them there if they are not this product's. " +
+      "The plan would have ordered " + F.int(r.planOrder) + " units; you ordered " + F.int(ordered) + " and sold " + F.int(sold) +
       ". Your realized profit was " + money(r.realizedProfit) + ". In expectation (one period is a single draw, so luck plays its part), your quantity earns " +
       money(r.expProfitYours) + " against the plan's " + money(r.expProfitPlan) + "." +
       (ranOut ? " Because you sold out, demand was at least " + F.int(ordered) + " units: your sales are a floor on demand, not demand itself." : "");
@@ -331,7 +335,7 @@
     cks.push(ordered === r.planOrder
       ? ["ok", "MATCH", "Against the plan", "You ordered exactly what the plan recommends."]
       : ["info", "NOTE", "Against the plan", "You ordered " + Math.abs(ordered - r.planOrder) + (ordered > r.planOrder ? " more" : " fewer") + " than the plan. The expected cost of that gap is " + money(Math.max(0, gap)) + " a period."]);
-    cks.push(["info", "ONE DRAW", "Luck", "A single period cannot prove an order was wrong: judge the rule over many periods, not this one."]);
+    cks.push(["info", "LUCK VS DECISION", "Luck", "A single period cannot prove an order was wrong: judge the rule over many periods, not this one."]);
     $("cChecks").innerHTML = cks.map(function (c) {
       return '<div class="check is-' + c[0] + '"><span class="badge">' + c[1] + '</span><div><span class="c-name">' + c[2] + '.</span> <span class="c-text">' + c[3] + "</span></div></div>";
     }).join("");
@@ -379,6 +383,7 @@
       $("period").value = "week";
       $("price").value = ex.price; $("cost").value = ex.cost; $("salvage").value = ex.salvage; $("goodwill").value = ex.goodwill;
       $("historyHint").textContent = "A pasted example: two columns, units sold and units stocked. Most weeks sold everything on the shelf.";
+      Tool.exampleBanner($("f-plan"), "<b>" + ex.label + "</b>: a constructed example. Paste your own history and prices over it.");
     } else {
       state.period = "week"; $("period").value = "week";
       loadProduct(ex.product, false);
@@ -389,7 +394,7 @@
   ["price", "cost", "salvage", "goodwill"].forEach(function (id) {
     $(id).addEventListener("input", debounce(runPlan, 150));
   });
-  $("history").addEventListener("input", debounce(function () { source = { type: "paste" }; runPlan(); }, 300));
+  $("history").addEventListener("input", debounce(function () { source = { type: "paste" }; Tool.exampleBanner($("f-plan"), null); runPlan(); }, 300));
   $("period").addEventListener("change", function () {
     state.period = this.value;
     if (source.type === "product") loadProduct(source.id, true);
@@ -489,6 +494,7 @@
       cr: { t: "How the order size is chosen", d: "This is the newsvendor problem. Order until one more unit is as likely to lose money as to make it. That happens at the <i>critical ratio</i>: underage cost ÷ (underage + overage), where underage = price − cost (+ lost-sale cost) and overage = cost − salvage. The order is the demand level with that probability of not being exceeded." },
       stockout: { t: "Chance of running out", d: "The probability that demand next period exceeds the order. Ordering for zero stockouts is almost never profitable; the right level depends on your margins." },
       gap: { t: "Gap to the plan", d: "How much more profit the plan's order would have earned on average than your order, given what was known before the period. It grades the decision, not the luck of one period." },
+      quantile: { t: "Quantile", d: "The 43% quantile of demand is the amount that demand stays at or below 43% of the time. Ordering the critical-ratio quantile means you run out in the remaining share of periods, which is exactly the balance your prices make worthwhile." },
       censored: { t: "Sold-out periods", d: "When you sell out, true demand was at least what you sold, maybe more. Treating that period as exact demand underestimates demand and leads to ordering too little next time. The tool treats sold-out periods as 'at least'." },
       curve: { t: "Profit by order size", d: "For every order size, the average profit over thousands of simulated demand draws from the forecast. The peak is the best order. A flat top means you have room; a steep side shows which mistake (too few or too many) costs more." }
     });
