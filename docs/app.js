@@ -103,10 +103,10 @@
     var ok = true;
     function need(id, cond, msg) { fieldError(id, cond ? "" : msg); if (!cond) ok = false; }
     need("history", !parsed.error && parsed.values.length >= 3, parsed.error || "Paste at least 3 periods of sales.");
-    need("price", v.price !== null && v.price > 0, "Above 0.");
-    need("cost", v.cost !== null && v.cost >= 0, "0 or more.");
-    need("salvage", v.salvage !== null && v.salvage >= 0, "0 or more.");
-    need("goodwill", v.goodwill >= 0, "0 or more.");
+    need("price", v.price !== null && v.price > 0, "Enter the selling price for one unit, above 0.");
+    need("cost", v.cost !== null && v.cost >= 0, "Enter what one unit costs you, 0 or more.");
+    need("salvage", v.salvage !== null && v.salvage >= 0, "Enter what an unsold unit brings back, 0 or more. Use 0 if it is thrown away.");
+    need("goodwill", v.goodwill >= 0, "Enter the extra cost of turning a customer away, 0 or more. Use 0 if there is none.");
     return ok ? v : null;
   }
 
@@ -144,8 +144,8 @@
     }
     var zeroNote = plan.order === 0
       ? "At these prices the math says do not stock: " + (dist.intermittent
-          ? F.pct(dist.zeroShare, 0) + " of periods sold nothing, and your prices only ask for the " + F.pct(plan.ratio, 0) + " quantile of demand, which is zero here. "
-          : "your prices only ask for the " + F.pct(plan.ratio, 0) + " quantile of demand, which is zero here. ")
+          ? F.pct(dist.zeroShare, 0) + " of periods sold nothing, and your prices only ask for the " + F.pct(plan.ratio, 0) + " quantile of demand (the amount that demand stays at or below in " + F.pct(plan.ratio, 0) + " of periods), which is zero here. "
+          : "your prices only ask for the " + F.pct(plan.ratio, 0) + " quantile of demand (the amount that demand stays at or below in " + F.pct(plan.ratio, 0) + " of periods), which is zero here. ")
         + "A higher price, a lower cost, or a real cost for a lost sale would change that. "
       : "";
     if (plan.state === "bad") {
@@ -295,8 +295,8 @@
     var ordered = num("cOrdered"), sold = num("cSold"), ranOut = $("cRanOut").value === "yes";
     var ok = true;
     function need(id, cond, msg) { fieldError(id, cond ? "" : msg); if (!cond) ok = false; }
-    need("cOrdered", ordered !== null && ordered >= 0 && Number.isInteger(ordered), "Whole number, 0 or more.");
-    need("cSold", sold !== null && sold >= 0 && Number.isInteger(sold) && (ordered === null || sold <= ordered), "Between 0 and what you ordered.");
+    need("cOrdered", ordered !== null && ordered >= 0 && Number.isInteger(ordered), "Enter the units you ordered, as a whole number, 0 or more.");
+    need("cSold", sold !== null && sold >= 0 && Number.isInteger(sold) && (ordered === null || sold <= ordered), "Enter the units you sold, as a whole number no larger than what you ordered.");
     writeUrl();
     if (!ok || !cur) {
       $("cTitle").textContent = !cur ? "Plan an order first" : "Check the highlighted inputs";
@@ -494,7 +494,7 @@
       cr: { t: "How the order size is chosen", d: "This is the newsvendor problem. Order until one more unit is as likely to lose money as to make it. That happens at the <i>critical ratio</i>: underage cost ÷ (underage + overage), where underage = price − cost (+ lost-sale cost) and overage = cost − salvage. The order is the demand level with that probability of not being exceeded." },
       stockout: { t: "Chance of running out", d: "The probability that demand next period exceeds the order. Ordering for zero stockouts is almost never profitable; the right level depends on your margins." },
       gap: { t: "Gap to the plan", d: "How much more profit the plan's order would have earned on average than your order, given what was known before the period. It grades the decision, not the luck of one period." },
-      quantile: { t: "Quantile", d: "The 43% quantile of demand is the amount that demand stays at or below 43% of the time. Ordering the critical-ratio quantile means you run out in the remaining share of periods, which is exactly the balance your prices make worthwhile." },
+      quantile: { t: "Quantile", d: "A level of demand named by how often demand stays at or below it. For example, the 60% quantile is the amount that demand stays at or below in 60% of periods. The tool orders the quantile at your critical ratio (shown in the ORDER LEVEL check), so you run out in the remaining share of periods: exactly the balance your prices make worthwhile." },
       censored: { t: "Sold-out periods", d: "When you sell out, true demand was at least what you sold, maybe more. Treating that period as exact demand underestimates demand and leads to ordering too little next time. The tool treats sold-out periods as 'at least'." },
       curve: { t: "Profit by order size", d: "For every order size, the average profit over thousands of simulated demand draws from the forecast. The peak is the best order. A flat top means you have room; a steep side shows which mistake (too few or too many) costs more." }
     });

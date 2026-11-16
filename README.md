@@ -21,7 +21,9 @@ The math behind it is the newsvendor model. Its critical ratio,
 > (price − cost + goodwill) / (price − salvage + goodwill),
 
 is the share of periods your order should cover: you order the amount
-of demand that is not exceeded that often (that demand quantile). This
+of demand that is not exceeded that often (that demand quantile: if
+the ratio is 60%, the amount that demand stays at or below in 60% of
+periods). This
 planner builds the demand distribution from the product's own history:
 a forecast method is chosen by rolling-origin backtest (seasonal naive
 vs ETS vs ARIMA, lowest one-step error wins), its point forecast is
@@ -31,8 +33,9 @@ profit, the stock-out chance and the leftovers all describe the same
 distribution.
 
 History: the planner runs from 3 periods, races forecast methods from
-20, and trusts the forecast fully from 26 weeks (12 months) with at
-least 12 periods of sales.
+20, and trusts the forecast fully from one seasonal cycle (26 weeks of
+weekly data, or 12 months of monthly data) with at least 12 periods of
+sales.
 
 Two modes:
 
@@ -58,11 +61,11 @@ Every verdict shows the checks that produced it:
 
 | Check | What it tests | When it is not OK |
 |---|---|---|
-| RATIO | The critical ratio for your prices, and the demand quantile it selects | Always INFO: it explains the order, it does not grade it |
-| BACKTEST | The winning forecast method's 80% interval coverage on this product's own history | WARN when coverage is far from 0.80: the spread is shakier than it claims |
-| SPARSE | Intermittent demand (30% or more empty periods) switches the distribution to a bootstrap of observed periods | INFO: the switch is disclosed, with the share of empty periods |
-| SOLD OUT | Whether sales hit the stock level often enough that the records understate demand | WARN when censored: the tail was widened; NOTE when no stock data was given |
-| HISTORY | Whether there is enough history to run the race at all | WARN below one seasonal cycle (26 weeks / 12 months) or with fewer than 12 non-empty periods |
+| ORDER LEVEL (Critical ratio) | The critical ratio for your prices, and the amount of demand it points to: the level that demand stays at or below in that share of periods | Always INFO: it explains the order, it does not grade it |
+| BACKTEST (Forecast method) | The winning forecast method's 80% interval coverage on this product's own history | WARN when coverage is far from 0.80: the spread is shakier than it claims |
+| SPARSE (Intermittent demand) | Intermittent demand (30% or more empty periods) switches the distribution to a bootstrap of observed periods | INFO: the switch is disclosed, with the share of empty periods |
+| SOLD OUT (Censored demand) | Whether sales hit the stock level often enough that the records understate demand | WARN when censored: the tail was widened; NOTE when no stock data was given |
+| THIN (History) | Whether there is enough history to run the race at all | WARN below one seasonal cycle (26 weeks of weekly data, 12 months of monthly data) or with fewer than 12 non-empty periods |
 
 ## Design decisions
 
