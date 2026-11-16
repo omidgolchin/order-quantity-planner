@@ -45,6 +45,7 @@ The page is one document in four numbered sections; the two jobs:
 - **Check last period** (section 4) — enter what you ordered and sold; the planner
   grades it against the plan for the same demand, in expectation, so
   one lucky or unlucky period is not mistaken for a good or bad order.
+- **Start here.** The page opens with the question it answers and three steps; a list of common situations fills the form; and a section says when to use the tool and when not.
 - **Help where you need it.** Notes sit in the margin beside each section — inline on a phone — saying what each number is, why it matters and where to find it; and every technical term in the inputs and results has a **?** that opens a plain-language explanation.
 
 Built-in examples come from the Online Retail II dataset (UCI, CC BY
@@ -136,6 +137,49 @@ intermittent demand; Kaplan & Meier (1958) for the censoring idea.
 - No forecasting method wins everywhere. Across 30 products ETS won 14, ARIMA 13 and seasonal naive 3, so the method has to be chosen per product, by backtest.
 - Intervals are estimates too. The model-based methods' 80% intervals covered 86–87% of actuals, seasonal naive's 73%; a planner that trusts the spread blindly orders off a distribution that is wrong in a known direction.
 - One period proves little. A week that sells out or ends with a pile of stock is one draw; grading an order against its expected profit, not its realized one, is what separates a bad rule from a bad week.
+
+## Common situations
+
+The form opens with "Start from a common situation". Each entry fills the form and says what it shows:
+
+| Situation | What it shows |
+|---|---|
+| Steady seller (two real products) | The default case: regular weekly demand, formula prices (cost 60% of price, salvage 10% of cost). |
+| Seasonal product | Christmas stock with a strong yearly pattern. |
+| Sells in some weeks only | Intermittent demand. At the default margins the plan is to order nothing. |
+| New product: 10 weeks of history | Too short to race methods; the verdict says to treat the order as a rough guide. |
+| Sold out most weeks | Sales hide demand; the stock column marks those weeks as "at least" and widens the upper tail. |
+| High margin, leftovers worth little | Critical ratio 68%: order well above the middle of demand. |
+| Thin margin, leftovers resell well | Critical ratio 47%: the two risks nearly balance. |
+| Perishable: leftovers thrown away | Critical ratio 34%: running out is the planned outcome in most periods. |
+| A lost sale also loses the customer | A goodwill cost raises the critical ratio from 43% to 72%. |
+| Cost above price | A pricing slip: the planner says not to order. |
+
+The last four margin structures reuse the steady seller's real sales with illustrative prices. To add a situation, append an entry `{label, why, product | paste, price, cost, salvage, goodwill}` to `EXAMPLES` in `docs/app.js`.
+
+## When to use it, and when not
+
+Use it to set a one-time or once-per-period order for one product whose leftovers lose value: seasonal or fashion stock, perishables, a print run, event supplies, or a weekly order of a product whose unsold units are marked down.
+
+| It assumes | If yours differs |
+|---|---|
+| One period: leftovers are sold off at the salvage value, not kept for the next period. | If leftovers keep most of their value and are simply sold next period, the bet is milder than the tool assumes and it orders too cautiously. Use a reorder-point or base-stock policy instead. |
+| The order arrives before selling starts; there is no second chance to reorder within the period. | If you can top up mid-period, order less up front: the tool overstates the risk of running out. |
+| Next period's demand looks like the history: the same level and seasonal pattern. | Before a promotion, a price change, a new competitor or a product launch, history understates or overstates demand. Adjust the history or use the forecast only as a starting point. |
+| Your sales show your demand, except in periods you mark as sold out. | If you sold out without recording stock, sales understate demand and the order comes out too low. Add the stock column. |
+| Costs are per unit: no fixed cost per order and no quantity discounts. | With a large fixed order cost or price breaks, use an economic-order-quantity or discount model; the newsvendor answer ignores both. |
+| One product, judged on its own. | If customers switch to a similar product when this one runs out, a lost sale costs less than the tool assumes; if a shared budget or shelf space limits several products, plan them together. |
+| Prices and costs are known. | The profit range covers demand only, not uncertain prices or costs. |
+
+Do not use it for products replenished continuously from a warehouse (use a reorder-point policy), for multi-period inventory with lead times (the Ordering Policy Tester covers lead times in a supply chain), or for a product with no sales history at all (borrow the history of a similar product and say so).
+
+## Where it comes from, and how it was generalised
+
+The tool grew from an earlier forecasting and ordering experiment on the [Online Retail II](https://archive.ics.uci.edu/dataset/502/online+retail+ii) dataset (a UK giftware wholesaler, 2009 to 2011; UCI, CC BY 4.0). That experiment backtested a seasonal-naive forecast on the shop's 30 best-selling products over four-week horizons and simulated orders and profit at one fixed price design. It also compared language-model forecasts, which did not carry into the tool.
+
+**What the tool's own backtest adds.** No forecasting method wins everywhere: in a rolling-origin race on the same 30 products, ETS won 14, ARIMA 13 and seasonal naive 3. And the forecast is not the order: on the default product the critical ratio is 43%, so the plan orders 516 units against a forecast of 736, and ordering the forecast earns about a quarter less in expectation.
+
+**How it was generalised.** The tool runs the same method race on whatever series you give it (all three methods for the built-in products, computed offline; two in the browser for a pasted series), spreads the winning forecast by its own errors, and turns the experiment's fixed prices into your inputs. It adds what a buyer needs that the experiment did not have: sold-out periods treated as "at least" demand, the goodwill cost of a lost customer, and a fair grade of last period's order.
 
 ## Research notes
 

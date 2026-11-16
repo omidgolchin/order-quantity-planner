@@ -9,3 +9,4 @@ scored only when someone chooses to run `scripts/eval_assist.js` with
 their own key.
 
 - 2026-11-16: structural-variation restructure (document-style layout, margin notes, draggable profit-curve marker). API spend: $0.00.
+- 2026-11-16: guide sections (start here, situations, when to use, where it comes from) — $0.00 API spend; all work local.

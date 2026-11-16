@@ -22,14 +22,21 @@
     </div>
     <h1>Order Quantity Planner</h1>
     <p class="kit-tagline">You have a product whose demand you cannot predict exactly. Get the order quantity the math supports, with the checks a planner runs first.</p>
-    <p class="doc-lede">This page is a short worked note in four sections: your sales, your prices, the order they support, and a check on last period. Fill in the blanks as you read — everything updates as you type. You can also <a href="#sec-check">check last period</a> once the order above is worked out, and <i>Fill from my notes</i> in section 2 reads pasted notes and fills the form for you.</p>
+    <div class="start-here">
+      <p class="sh-q"><b>It answers:</b> how many units to order for the next period when demand is uncertain, so that the cost of running out and the cost of leftovers balance for your prices.</p>
+      <ol>
+        <li><b>Pick the situation closest to yours</b> in "Start from a common situation": a real product with a known pattern, or a margin structure. Or keep the steady seller already filled in.</li>
+        <li><b>Put in your own numbers:</b> past sales in section 1 (one number per week or month, most recent last) and your prices in section 2. <i>Fill from my notes</i> in section 2 can read pasted notes. Everything updates as you type.</li>
+        <li><b>Read the order in section 3</b> and the checks beside it. After the period, grade the order in <a href="#sec-check">section 4</a>. Before you rely on it, check <a href="#fit" class="open-details">when to use this tool, and when not</a>.</li>
+      </ol>
+    </div>
   </header>
 
   <form id="f-plan" novalidate onsubmit="return false">
     <div class="panel-head doc-exrow">
-      <h2>Start from an example</h2>
-      <select class="example" id="example" aria-label="Load an example">
-        <option value="">Load example…</option>
+      <h2>Start from a common situation</h2>
+      <select class="example" id="example" aria-label="Start from a common situation">
+        <option value="">Start from a common situation…</option>
       </select>
     </div>
 
@@ -197,6 +204,36 @@ order = smallest Q with P(demand ≤ Q) ≥ critical ratio</div>
       </div>
     </aside>
   </section>
+
+  <details class="more guide" id="fit">
+    <summary>When to use it, and when not <span class="sub">assumptions, limits, alternatives</span></summary>
+    <div class="more-body small">
+      <p><b>Use it</b> to set a one-time or once-per-period order for one product whose leftovers lose value: seasonal or fashion stock, perishables, a print run, event supplies, or a weekly order of a product whose unsold units are marked down.</p>
+      <p><b>It assumes</b> the following. Each line says what happens to the answer when your case breaks the assumption.</p>
+      <table class="fit-table">
+        <thead><tr><th>Assumption</th><th>If yours differs</th></tr></thead>
+        <tbody>
+          <tr><td>One period: leftovers are sold off at the salvage value, not kept for the next period.</td><td>If leftovers keep most of their value and are simply sold next period, the bet is milder than the tool assumes and it orders too cautiously. Use a reorder-point or base-stock policy instead.</td></tr>
+          <tr><td>The order arrives before selling starts; there is no second chance to reorder within the period.</td><td>If you can top up mid-period, order less up front: the tool overstates the risk of running out.</td></tr>
+          <tr><td>Next period's demand looks like the history: the same level and seasonal pattern.</td><td>Before a promotion, a price change, a new competitor or a product launch, history understates or overstates demand. Adjust the history or use the forecast only as a starting point.</td></tr>
+          <tr><td>Your sales show your demand, except in periods you mark as sold out.</td><td>If you sold out without recording stock, sales understate demand and the order comes out too low. Add the stock column.</td></tr>
+          <tr><td>Costs are per unit: no fixed cost per order and no quantity discounts.</td><td>With a large fixed order cost or price breaks, use an economic-order-quantity or discount model; the newsvendor answer ignores both.</td></tr>
+          <tr><td>One product, judged on its own.</td><td>If customers switch to a similar product when this one runs out, a lost sale costs less than the tool assumes; if a shared budget or shelf space limits several products, plan them together.</td></tr>
+          <tr><td>Prices and costs are known.</td><td>The profit range covers demand only, not uncertain prices or costs.</td></tr>
+        </tbody>
+      </table>
+      <p><b>Do not use it</b> for products replenished continuously from a warehouse (use a reorder-point policy), for multi-period inventory with lead times (the Ordering Policy Tester covers lead times in a supply chain), or for a product with no sales history at all (borrow the history of a similar product and say so).</p>
+    </div>
+  </details>
+
+  <details class="more guide" id="origin">
+    <summary>Where this tool comes from <span class="sub">the problem and data it was built on, and how it was generalised</span></summary>
+    <div class="more-body small">
+      <p>The tool grew from an earlier forecasting and ordering experiment on the <a href="https://archive.ics.uci.edu/dataset/502/online+retail+ii">Online Retail II</a> dataset (a UK giftware wholesaler, 2009 to 2011; UCI, CC BY 4.0). That experiment backtested a seasonal-naive forecast on the shop's 30 best-selling products over four-week horizons and simulated orders and profit at one fixed price design. It also compared language-model forecasts, which did not carry into the tool.</p>
+      <p><b>What the tool's own backtest adds.</b> No forecasting method wins everywhere: in a rolling-origin race on the same 30 products, ETS won 14, ARIMA 13 and seasonal naive 3. And the forecast is not the order: on the default product the critical ratio is 43%, so the plan orders 516 units against a forecast of 736, and ordering the forecast earns about a quarter less in expectation.</p>
+      <p><b>How it was generalised.</b> The tool runs the same method race on whatever series you give it (all three methods for the built-in products, computed offline; two in the browser for a pasted series), spreads the winning forecast by its own errors, and turns the experiment's fixed prices into your inputs. It adds what a buyer needs that the experiment did not have: sold-out periods treated as "at least" demand, the goodwill cost of a lost customer, and a fair grade of last period's order.</p>
+    </div>
+  </details>
 
   <footer class="kit-footer">
     <p class="kit-siblings"></p>

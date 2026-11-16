@@ -3,6 +3,9 @@
 (function () {
   "use strict";
   var $ = function (id) { return document.getElementById(id); };
+  function openDetails(id) { var d = document.getElementById(id); if (d && d.tagName === "DETAILS") { d.open = true; d.scrollIntoView({ block: "start" }); var su = d.querySelector("summary"); if (su) su.focus(); } }
+  document.querySelectorAll("a.open-details").forEach(function (a) { a.addEventListener("click", function (e) { e.preventDefault(); openDetails(a.getAttribute("href").slice(1)); }); });
+  if (location.hash === "#fit" || location.hash === "#origin") openDetails(location.hash.slice(1));
   var F = Tool.fmt;
   var PRODUCTS = window.ORDER_PRODUCTS || [];
   var byId = {};
@@ -12,13 +15,24 @@
     sold: [60, 60, 58, 60, 60, 52, 60, 60, 60, 47, 60, 60, 55, 60, 60, 60, 49, 60, 60, 60, 53, 60, 60, 60, 57, 60],
     stock: [60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60]
   };
+  /* Common situations. Real products from Online Retail II, plus margin structures applied to the
+     steady seller (the prices there are illustrative). To add one, append {label, why, product | paste,
+     price, cost, salvage, goodwill}; price fields left out keep the product's formula prices. */
   var EXAMPLES = [
-    { label: "Heart t-light holder (steady seller)", product: "85123A" },
-    { label: "Jumbo spotty bag (steady seller)", product: "85099B" },
-    { label: "Christmas paper chains (seasonal)", product: "22086" },
-    { label: "Christmas cake cases (intermittent)", product: "22952" },
-    { label: "Lunch bag, last 10 weeks only (short history)", product: "20725-short" },
-    { label: "A shop that sold out most weeks (pasted, with stock)", paste: CENSOR_EXAMPLE, price: 14.99, cost: 6.20, salvage: 3.00, goodwill: "" },
+    { label: "Steady seller: heart t-light holder", product: "85123A" },
+    { label: "Steady seller: jumbo spotty bag", product: "85099B" },
+    { label: "Seasonal product: Christmas paper chains", product: "22086" },
+    { label: "Sells in some weeks only: Christmas cake cases", product: "22952" },
+    { label: "New product: 10 weeks of history", product: "20725-short" },
+    { label: "Sold out most weeks (sales hide demand)", paste: CENSOR_EXAMPLE, price: 14.99, cost: 6.20, salvage: 3.00, goodwill: "" },
+    { label: "High margin, leftovers worth little (gifts, fashion)", product: "85123A", price: 2.95, cost: 1.00, salvage: 0.10, goodwill: "",
+      why: "A lost sale costs far more than a leftover, so the order should cover about two periods in three (critical ratio 68%) and stands well above the default plan." },
+    { label: "Thin margin, leftovers resell well (staples)", product: "85123A", price: 2.95, cost: 2.50, salvage: 2.00, goodwill: "",
+      why: "Little profit per sale and little loss per leftover: the two risks nearly balance (critical ratio 47%), so the order sits near the middle of likely demand." },
+    { label: "Perishable: leftovers thrown away (bakery, fresh food)", product: "85123A", price: 2.95, cost: 1.95, salvage: 0, goodwill: "",
+      why: "Every unsold unit is a total loss and the margin is modest, so the order covers only about one period in three (critical ratio 34%): running out is the planned outcome in most periods." },
+    { label: "A lost sale also loses the customer", product: "85123A", goodwill: 3.00,
+      why: "The goodwill cost (3.00 per missed sale) stands for future purchases lost when a customer finds the shelf empty. It raises the critical ratio from 43% to 72% and pushes the order up." },
     { label: "Cost above price (a pricing slip)", product: "85123A", cost: 3.40 }
   ];
 
@@ -411,7 +425,8 @@
     } else {
       state.period = "week"; $("period").value = "week";
       loadProduct(ex.product, false);
-      if (ex.cost !== undefined) $("cost").value = ex.cost;
+      ["price", "cost", "salvage", "goodwill"].forEach(function (k) { if (ex[k] !== undefined) $(k).value = ex[k]; });
+      if (ex.why) Tool.exampleBanner($("f-plan"), "<b>" + ex.label + ".</b> " + ex.why + " Real sales of a UK giftware product; the prices are illustrative. Type your own over them.");
     }
     runPlan();
   });
