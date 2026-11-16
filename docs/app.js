@@ -27,6 +27,7 @@
   var state = Tool.readParams(DEFAULTS);
   var source = { type: "product", id: state.product && byId[state.product] ? state.product : "85123A" };
   var cur = null; // last plan computation: {dist, plan, prices, series, stock, period}
+  var markerQ = null; // quantity the chart's exploration marker sits on (readout only)
 
   /* ---------- helpers ---------- */
   function debounce(fn, ms) { var t; return function () { clearTimeout(t); t = setTimeout(fn, ms); }; }
@@ -127,7 +128,7 @@
       warnBelow: v.period === "month" ? 12 : 26 });
     cur = { dist: dist, plan: plan, prices: v, series: v.series, stock: v.stock, precomputed: got.precomputed };
     renderVerdict(); renderChecks(); renderChart(); renderDetails();
-    if (state.mode === "check") runCheck();
+    if ($("cOrdered").value !== "" || $("cSold").value !== "") runCheck();
   }
 
   function renderVerdict() {
@@ -221,21 +222,42 @@
     var p95 = curve.q.map(function (q, i) { return [q, curve.p95[i]]; });
     var hl = 0, best = -Infinity;
     curve.q.forEach(function (q, i) { if (Math.abs(q - plan.order) < Math.abs(curve.q[hl] - plan.order)) hl = i; if (curve.mean[i] > best) best = curve.mean[i]; });
+    /* exploration marker: a readout over the same curve data. It never
+     * feeds back into the plan; it only reads curve.mean/p5/p95. */
+    if (markerQ === null || markerQ < curve.q[0] || markerQ > curve.q[curve.q.length - 1]) markerQ = plan.order;
+    var mi = 0;
+    curve.q.forEach(function (q, i) { if (Math.abs(q - markerQ) < Math.abs(curve.q[mi] - markerQ)) mi = i; });
+    markerQ = curve.q[mi];
+    var vls = (function () {
+      var fq = Math.round(plan.forecast), close = Math.abs(fq - plan.order) < 0.22 * hiQ;
+      return [{ x: plan.order, label: "order " + F.int(plan.order) + (close ? " · forecast " + F.int(fq) + " (orange)" : ""), color: "accent" },
+              { x: fq, label: close ? "" : "forecast " + F.int(fq), color: "series2" }];
+    })();
+    var exploring = mi !== hl; // marker sits on a grid point other than the order's
+    if (exploring) vls.push({ x: markerQ, label: "exploring " + F.int(markerQ), color: "series2" });
     Tool.lineChart($("profitChart"), {
       series: [
-        { label: "Expected profit", color: "accent", points: pts, markers: true, highlight: hl },
+        { label: "Expected profit", color: "accent", points: pts, markers: true, highlight: mi },
         { label: "95th percentile", color: "neutral", points: p95, dash: "5 4" },
         { label: "5th percentile", color: "neutral", points: p5, dash: "5 4" }
       ],
-      vLines: (function () {
-        var fq = Math.round(plan.forecast), close = Math.abs(fq - plan.order) < 0.22 * hiQ;
-        return [{ x: plan.order, label: "order " + F.int(plan.order) + (close ? " · forecast " + F.int(fq) + " (orange)" : ""), color: "accent" },
-                { x: fq, label: close ? "" : "forecast " + F.int(fq), color: "series2" }];
-      })(),
+      vLines: vls,
       xTitle: "units ordered", yTitle: "profit for the period", legend: true, height: 260,
       xFormat: function (x) { return F.int(x); }, yFormat: function (y) { return (y < 0 ? "−" : "") + F.int(Math.abs(y)); }
     });
     $("profitCaption").textContent = "The dashed lines are the 5th and 95th percentiles of profit at each quantity: the spread is the risk the verdict weighs. The curve peaks at the recommended order.";
+    var slider = $("qMarker");
+    if (slider && curve.q.length > 1) {
+      slider.min = curve.q[0]; slider.max = curve.q[curve.q.length - 1];
+      slider.step = Math.max(1, curve.q[1] - curve.q[0]);
+      if (Number(slider.value) !== markerQ) slider.value = markerQ;
+      $("qReadout").textContent = exploring
+        ? "At " + F.int(markerQ) + " units, expected profit is about " + money(curve.mean[mi]) +
+          " (5th to 95th percentile: " + money(curve.p5[mi]) + " to " + money(curve.p95[mi]) + ")." +
+          " Exploring only — the recommended order stays " + F.int(plan.order) + "."
+        : "Marker on the recommended order: " + F.int(plan.order) + " units, expected profit about " + money(curve.mean[hl]) +
+          " (5th to 95th percentile: " + money(curve.p5[hl]) + " to " + money(curve.p95[hl]) + "). Drag the marker to explore other quantities.";
+    }
   }
 
   function quantile(sortedDraws, p) { return Newsvendor.percentile(sortedDraws, p); }
@@ -299,8 +321,8 @@
     need("cSold", sold !== null && sold >= 0 && Number.isInteger(sold) && (ordered === null || sold <= ordered), "Enter the units you sold, as a whole number no larger than what you ordered.");
     writeUrl();
     if (!ok || !cur) {
-      $("cTitle").textContent = !cur ? "Plan an order first" : "Check the highlighted inputs";
-      $("cBody").textContent = !cur ? "The grade uses the product, prices and forecast from Plan an order." : "";
+      $("cTitle").textContent = !cur ? "Work out the order above first" : "Check the highlighted inputs";
+      $("cBody").textContent = !cur ? "The grade uses the product, prices and forecast from the order above." : "";
       $("cVerdict").className = "panel verdict v-neutral"; $("cKpis").innerHTML = ""; $("cChecks").innerHTML = "";
       return;
     }
@@ -314,7 +336,7 @@
     else title = "Close to the plan";
     var basis = (source.type === "product" && byId[source.id] ? byId[source.id].name : "your pasted sales history") +
       " at price " + amt(v.price) + ", cost " + amt(v.cost) + ", leftover worth " + amt(v.salvage) + (v.goodwill ? ", lost-sale cost " + amt(v.goodwill) : "");
-    var body = "Graded against " + basis + ", taken from Plan an order; change them there if they are not this product's. " +
+    var body = "Graded against " + basis + ", taken from the order above; change them in sections 1 and 2 if they are not this product's. " +
       "The plan would have ordered " + F.int(r.planOrder) + " units; you ordered " + F.int(ordered) + " and sold " + F.int(sold) +
       ". Your realized profit was " + money(r.realizedProfit) + ". In expectation (one period is a single draw, so luck plays its part), your quantity earns " +
       money(r.expProfitYours) + " against the plan's " + money(r.expProfitPlan) + "." +
@@ -330,7 +352,7 @@
     ].map(function (it) { return '<div class="kpi"><span class="k-val">' + it[0] + '</span><span class="k-lbl">' + it[1] + (it[2] ? ' <button type="button" data-tip="' + it[2] + '"></button>' : "") + "</span></div>"; }).join("");
     var cks = [];
     cks.push(ranOut
-      ? ["warn", "SOLD OUT", "Censored demand", "You ran out, so this period's sales hide its demand. In Plan an order, a stock column would uncensor periods like this one."]
+      ? ["warn", "SOLD OUT", "Censored demand", "You ran out, so this period's sales hide its demand. In section 1, a stock column would uncensor periods like this one."]
       : ["ok", "OK", "Stock-out", "You did not run out, so this period's demand is fully observed."]);
     cks.push(ordered === r.planOrder
       ? ["ok", "MATCH", "Against the plan", "You ordered exactly what the plan recommends."]
@@ -353,24 +375,26 @@
     }
     Tool.writeParams(s);
   }
+  /* No tabs in the document layout: sections 1–3 are the plan, section 4 is
+   * the check, all in one flow. setMode now only records the mode for the
+   * URL and primes the check section when the page opens in check mode. */
+  function primeCheck() {
+    if (!cur) return;
+    if ($("cOrdered").value === "" && $("cSold").value === "") {
+      /* start from the common habit, ordering the forecast, against the
+       * last period's sales, so the grade has something to say */
+      var fq = Math.round(cur.plan.forecast), last = cur.series.length ? Math.round(cur.series[cur.series.length - 1]) : 0;
+      $("cOrdered").value = fq; $("cSold").value = Math.min(fq, last); $("cRanOut").value = last >= fq ? "yes" : "no";
+    }
+    runCheck();
+  }
   function setMode(m) {
     state.mode = m;
-    $("tab-plan").classList.toggle("active", m === "plan"); $("tab-plan").setAttribute("aria-selected", m === "plan");
-    $("tab-check").classList.toggle("active", m === "check"); $("tab-check").setAttribute("aria-selected", m === "check");
-    $("view-plan").hidden = m !== "plan"; $("view-check").hidden = m !== "check";
     if (m === "check") {
       if (!cur) runPlan();
-      /* first visit: start from the common habit, ordering the forecast,
-       * against the last period's sales, so the grade has something to say */
-      if (cur && $("cOrdered").value === "" && $("cSold").value === "") {
-        var fq = Math.round(cur.plan.forecast), last = cur.series.length ? Math.round(cur.series[cur.series.length - 1]) : 0;
-        $("cOrdered").value = fq; $("cSold").value = Math.min(fq, last); $("cRanOut").value = last >= fq ? "yes" : "no";
-      }
-      runCheck();
+      primeCheck();
     } else runPlan();
   }
-  $("tab-plan").addEventListener("click", function () { setMode("plan"); });
-  $("tab-check").addEventListener("click", function () { setMode("check"); });
 
   EXAMPLES.forEach(function (ex, i) { var o = document.createElement("option"); o.value = i; o.textContent = ex.label; $("example").appendChild(o); });
   $("example").addEventListener("change", function () {
@@ -394,6 +418,7 @@
   ["price", "cost", "salvage", "goodwill"].forEach(function (id) {
     $(id).addEventListener("input", debounce(runPlan, 150));
   });
+  $("qMarker").addEventListener("input", function () { markerQ = Number(this.value); if (cur) renderChart(); });
   $("history").addEventListener("input", debounce(function () { source = { type: "paste" }; Tool.exampleBanner($("f-plan"), null); runPlan(); }, 300));
   $("period").addEventListener("change", function () {
     state.period = this.value;
@@ -500,5 +525,6 @@
     });
 
     setMode(state.mode === "check" ? "check" : "plan");
+    if (state.mode !== "check") primeCheck();
   })();
 })();

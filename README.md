@@ -4,7 +4,7 @@ For anyone who buys stock for a product whose demand they cannot predict exactly
 
 ![The planner on three products (a steady seller, a seasonal product, a shop that sold out most weeks), how the order size is chosen, and the check of last period's order](docs/hero.gif)
 
-![The planner on a desktop: the three-step guide, the inputs with a hint under each, and the recommended order](docs/screenshots/desktop.png)
+![The planner on a desktop: a worked note with numbered sections, the inputs inside the text, and the recommended order with its profit curve](docs/screenshots/desktop.png)
 
 **Use it:** https://omidgolchin.github.io/order-quantity-planner/ (runs in your browser; nothing you type leaves it)
 
@@ -37,15 +37,15 @@ History: the planner runs from 3 periods, races forecast methods from
 weekly data, or 12 months of monthly data) with at least 12 periods of
 sales.
 
-Two modes:
+The page is one document in four numbered sections; the two jobs:
 
-- **Plan an order** — the verdict ("Order 538 units"), expected profit
+- **Plan an order** (sections 1–3) — the verdict ("Order 538 units"), expected profit
   with a 5–95% range, stock-out chance, expected leftovers, and a
   profit curve showing what every other order quantity would earn.
-- **Check last period** — enter what you ordered and sold; the planner
+- **Check last period** (section 4) — enter what you ordered and sold; the planner
   grades it against the plan for the same demand, in expectation, so
   one lucky or unlucky period is not mistaken for a good or bad order.
-- **Help where you need it.** Each mode opens with three steps saying what to enter and what you get; every input has a line under it saying what the number is, why it matters and where to find it; and every technical term in the inputs and results has a **?** that opens a plain-language explanation.
+- **Help where you need it.** Notes sit in the margin beside each section — inline on a phone — saying what each number is, why it matters and where to find it; and every technical term in the inputs and results has a **?** that opens a plain-language explanation.
 
 Built-in examples come from the Online Retail II dataset (UCI, CC BY
 4.0; see DATA_SOURCES.md): a steady seller, a strongly seasonal

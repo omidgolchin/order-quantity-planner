@@ -7,3 +7,5 @@ runs in the visitor's browser with the visitor's own key. The spec's
 budget for the tool is $0; the extraction test set in `assist/` is
 scored only when someone chooses to run `scripts/eval_assist.js` with
 their own key.
+
+- 2026-11-16: structural-variation restructure (document-style layout, margin notes, draggable profit-curve marker). API spend: $0.00.

@@ -22,147 +22,180 @@
     </div>
     <h1>Order Quantity Planner</h1>
     <p class="kit-tagline">You have a product whose demand you cannot predict exactly. Get the order quantity the math supports, with the checks a planner runs first.</p>
+    <p class="doc-lede">This page is a short worked note in four sections: your sales, your prices, the order they support, and a check on last period. Fill in the blanks as you read — everything updates as you type. You can also <a href="#sec-check">check last period</a> once the order above is worked out, and <i>Fill from my notes</i> in section 2 reads pasted notes and fills the form for you.</p>
   </header>
 
-  <div class="tool-modes" role="tablist" aria-label="What do you want to do?">
-    <button type="button" role="tab" id="tab-plan" class="active" aria-selected="true">Plan an order</button>
-    <button type="button" role="tab" id="tab-check" aria-selected="false">Check last period</button>
-  </div>
-
-  <!-- ================= PLAN ================= -->
-  <section id="view-plan" role="tabpanel" aria-labelledby="tab-plan">
-    <div class="guide" aria-label="How to use this mode">
-      <ol class="steps">
-        <li><b>Paste your sales history</b>: units sold in each past week or month. The tool forecasts the next period from it.</li>
-        <li><b>Enter your prices</b>: what you sell at, what you pay, and what a leftover unit is still worth.</li>
-        <li><b>Get the order</b>: how many units to buy, the profit to expect, and the chance of running out. The chart shows the profit of every other order size.</li>
-      </ol>
-      <p class="also"><b>Also here:</b> <i>Check last period</i> grades an order you already placed · <i>Fill from my description</i> reads pasted notes · <i>Forecast and backtest</i> shows which forecast was picked and how well it did on your own past data.</p>
+  <form id="f-plan" novalidate onsubmit="return false">
+    <div class="panel-head doc-exrow">
+      <h2>Start from an example</h2>
+      <select class="example" id="example" aria-label="Load an example">
+        <option value="">Load example…</option>
+      </select>
     </div>
-    <div class="work">
-      <form class="panel" id="f-plan" novalidate onsubmit="return false">
-        <div class="panel-head">
-          <h2>Your product</h2>
-          <select class="example" id="example" aria-label="Load an example">
-            <option value="">Load example…</option>
-          </select>
+
+    <!-- ================= 1 · YOUR SALES ================= -->
+    <section class="doc-sec" id="sec-sales" aria-labelledby="sec-sales-h">
+      <div class="doc-main">
+        <h2 id="sec-sales-h">1 · Your sales</h2>
+        <div class="field full"><label for="history">Units sold per period <span class="muted">(one per line or comma-separated; optional second column: units stocked)</span></label>
+          <textarea id="history" rows="5" spellcheck="false"></textarea>
+          <div class="hint" id="historyHint"></div>
         </div>
-        <div class="fields">
-          <div class="group-label">Sales history</div>
-          <div class="field full"><label for="history">Units sold per period <button type="button" data-tip="demand"></button> <span class="muted">(one per line or comma-separated; optional second column: units stocked)</span></label>
-            <textarea id="history" rows="5" spellcheck="false"></textarea>
-            <div class="hint" id="historyHint"></div><div class="hint">One number per period, most recent last. The tool runs from 3 periods, races forecast methods from 20, and trusts the forecast fully from one seasonal cycle: 26 weeks of weekly data, or 12 months of monthly data. If you sold out in some periods, add the units you had as a second column so those periods count as "at least" that many.</div></div>
-          <div class="field full"><label for="csvFile">…or upload a CSV <span class="muted">(date, units[, stock])</span></label>
-            <input id="csvFile" type="file" accept=".csv,text/csv"><div class="hint">A spreadsheet export works: a date column, then units sold, then (optional) units stocked.</div></div>
-          <div class="field"><label for="period">Period length</label>
-            <select id="period"><option value="week">Week</option><option value="month">Month</option></select><div class="hint">The length of one ordering cycle: how often you place this order.</div></div>
-          <div class="group-label">Prices (per unit, any currency)</div>
-          <div class="field"><label for="price">Selling price</label><input id="price" type="number" min="0" step="any" inputmode="decimal"><div class="hint">What a customer pays for one unit.</div></div>
-          <div class="field"><label for="cost">What you pay per unit</label><input id="cost" type="number" min="0" step="any" inputmode="decimal"><div class="hint">Your purchase or production cost for one unit.</div></div>
-          <div class="field"><label for="salvage">Unsold unit is worth <button type="button" data-tip="salvage"></button></label><input id="salvage" type="number" min="0" step="any" inputmode="decimal"><div class="hint">Clearance, outlet, or 0 if it is thrown away. If leftovers keep for next period, use what they are worth then: about the unit cost less what holding them costs.</div></div>
-          <div class="field"><label for="goodwill">Cost of a lost sale <button type="button" data-tip="goodwill"></button> <span class="muted">(optional)</span></label><input id="goodwill" type="number" min="0" step="any" inputmode="decimal" placeholder="0"><div class="hint">Beyond the lost margin: annoyed customers, penalties.</div></div>
+        <p>The length of one ordering cycle — how often you place this order — is one <span class="field ifield"><label for="period">period</label> <select id="period"><option value="week">week</option><option value="month">month</option></select></span>.</p>
+        <p>…or upload a CSV instead: <span class="field ifield filefield"><label for="csvFile">CSV file <span class="muted">(date, units[, stock])</span></label> <input id="csvFile" type="file" accept=".csv,text/csv"></span></p>
+      </div>
+      <aside class="doc-notes" aria-label="Notes on your sales">
+        <div class="doc-note">
+          <h3>Reading your history</h3>
+          <p>One number per period, most recent last. The tool runs from 3 periods, races forecast methods from 20, and trusts the forecast fully from one seasonal cycle: 26 weeks of weekly data, or 12 months of monthly data. If you sold out in some periods, add the units you had as a second column so those periods count as “at least” that many.</p>
         </div>
-        <div class="actions" style="margin-top:12px">
+        <div class="doc-note">
+          <h3>Why the sales history matters</h3>
+          <p>The right order depends on the whole spread of possible demand, not just the average. The tool fits several forecasts to your history, keeps the one that predicted your own past periods best (a backtest), and uses its errors to estimate how uncertain next period is.</p>
+        </div>
+        <div class="doc-note">
+          <h3>Uploading a CSV</h3>
+          <p>A spreadsheet export works: a date column, then units sold, then (optional) units stocked.</p>
+        </div>
+      </aside>
+    </section>
+
+    <!-- ================= 2 · YOUR PRICES ================= -->
+    <section class="doc-sec" id="sec-prices" aria-labelledby="sec-prices-h">
+      <div class="doc-main">
+        <h2 id="sec-prices-h">2 · Your prices</h2>
+        <p><span class="field ifield"><label for="price">Selling price</label> <input id="price" type="number" min="0" step="any" inputmode="decimal"></span> is what a customer pays for one unit, and <span class="field ifield"><label for="cost">what you pay per unit</label> <input id="cost" type="number" min="0" step="any" inputmode="decimal"></span> is your purchase or production cost. An <span class="field ifield"><label for="salvage">unsold unit is worth</label> <input id="salvage" type="number" min="0" step="any" inputmode="decimal"></span> at clearance or an outlet — or nothing, if it is thrown away. And if turning a customer away costs you beyond the lost margin, add the <span class="field ifield"><label for="goodwill">cost of a lost sale</label> <input id="goodwill" type="number" min="0" step="any" inputmode="decimal" placeholder="0"></span> (optional). All prices are per unit, in any currency.</p>
+        <div class="actions">
           <button type="button" id="assistToggle">✦ Fill from my notes</button>
           <span class="footnote">Paste a supplier email or a few lines of notes; an AI model fills the form, the tool does the math.</span>
         </div>
         <div id="assistMount"></div>
-      </form>
-
-      <div>
-        <section class="panel verdict" id="verdict" aria-live="polite">
-          <p class="v-kicker">Verdict</p>
-          <p class="v-title" id="vTitle">…</p>
-          <p class="v-body" id="vBody"></p>
-          <div class="kpis" id="kpis"></div>
-          <div class="checks" id="checksP" aria-label="Built-in checks"></div>
-        </section>
-        <div class="actions">
-          <button type="button" id="copySummary">Copy summary</button>
-          <button type="button" id="copyLink">Copy link</button>
-          <span class="toast" id="toastP"></span>
+      </div>
+      <aside class="doc-notes" aria-label="Notes on your prices">
+        <div class="doc-note">
+          <h3>Salvage value</h3>
+          <p>What an unsold unit is worth at the end of the period: clearance price, outlet value, or 0 if it is thrown away. If leftovers keep for next period, use what they are worth then: about the unit cost less what holding them costs. High salvage makes overstocking cheap, so the tool orders more.</p>
         </div>
-      </div>
-    </div>
-
-    <section class="panel" style="margin-top:16px">
-      <h2>What each order quantity earns <button type="button" data-tip="curve"></button></h2>
-      <div class="svgchart" id="profitChart"></div>
-      <p class="chart-caption" id="profitCaption"></p>
+        <div class="doc-note">
+          <h3>Cost of a lost sale</h3>
+          <p>Anything you lose beyond the margin when a customer finds you sold out, such as a customer who does not come back: annoyed customers, penalties. It makes running out more expensive, so the tool orders more. Leave it at 0 if you are unsure.</p>
+        </div>
+      </aside>
     </section>
+  </form>
 
-    <details class="more">
-      <summary>Forecast and backtest <span class="sub">which method, and how much to trust it</span></summary>
-      <div class="more-body">
-        <div class="svgchart" id="fanChart"></div>
-        <p class="chart-caption" id="fanCaption"></p>
-        <div class="table-scroll"><table id="tBacktest"></table></div>
-        <p class="small" id="forecastNote"></p>
+  <!-- ================= 3 · THE ORDER ================= -->
+  <section class="doc-sec" id="sec-order" aria-labelledby="sec-order-h">
+    <div class="doc-main">
+      <h2 id="sec-order-h">3 · The order</h2>
+      <section class="panel verdict" id="verdict" aria-live="polite">
+        <p class="v-kicker">Verdict</p>
+        <p class="v-title" id="vTitle">…</p>
+        <p class="v-body" id="vBody"></p>
+        <div class="kpis" id="kpis"></div>
+        <div class="checks" id="checksP" aria-label="Built-in checks"></div>
+      </section>
+      <div class="actions">
+        <button type="button" id="copySummary">Copy summary</button>
+        <button type="button" id="copyLink">Copy link</button>
+        <span class="toast" id="toastP"></span>
       </div>
-    </details>
 
-    <details class="more">
-      <summary>The full numbers <span class="sub">critical ratio, sensitivity, demand quantiles</span></summary>
-      <div class="more-body">
-        <div class="table-scroll"><table id="tFull"></table></div>
+      <h3 class="doc-subh">What each order quantity earns</h3>
+      <div class="svgchart" id="profitChart"></div>
+      <div class="marker-row">
+        <label for="qMarker">Explore another quantity</label>
+        <input type="range" id="qMarker" aria-describedby="qReadout">
+        <p class="marker-readout" id="qReadout" aria-live="polite"></p>
       </div>
-    </details>
+      <p class="chart-caption" id="profitCaption"></p>
 
-    <details class="more">
-      <summary>How the verdict is decided <span class="sub">rules, formulas, sources</span></summary>
-      <div class="more-body small">
-        <p><b>The order quantity</b> is the newsvendor solution (Arrow, Harris &amp; Marschak 1951): order up to the demand quantile set by your economics, not to the forecast. One unit too many loses (cost − salvage); one unit too few loses (price − cost + goodwill). The balance point is the critical ratio, and the tool orders the smallest quantity whose chance of covering demand reaches it.</p>
-        <div class="formula">critical ratio = (price − cost + goodwill) / (price − salvage + goodwill)
+      <details class="more">
+        <summary>Forecast and backtest <span class="sub">which method, and how much to trust it</span></summary>
+        <div class="more-body">
+          <div class="svgchart" id="fanChart"></div>
+          <p class="chart-caption" id="fanCaption"></p>
+          <div class="table-scroll"><table id="tBacktest"></table></div>
+          <p class="small" id="forecastNote"></p>
+        </div>
+      </details>
+
+      <details class="more">
+        <summary>The full numbers <span class="sub">critical ratio, sensitivity, demand quantiles</span></summary>
+        <div class="more-body">
+          <div class="table-scroll"><table id="tFull"></table></div>
+        </div>
+      </details>
+
+      <details class="more">
+        <summary>How the verdict is decided <span class="sub">rules, formulas, sources</span></summary>
+        <div class="more-body small">
+          <p><b>The order quantity</b> is the newsvendor solution (Arrow, Harris &amp; Marschak 1951): order up to the demand quantile set by your economics, not to the forecast. One unit too many loses (cost − salvage); one unit too few loses (price − cost + goodwill). The balance point is the critical ratio, and the tool orders the smallest quantity whose chance of covering demand reaches it.</p>
+          <div class="formula">critical ratio = (price − cost + goodwill) / (price − salvage + goodwill)
 order = smallest Q with P(demand ≤ Q) ≥ critical ratio</div>
-        <p><b>The forecast is chosen by backtest, not by fit.</b> Seasonal naive, ETS and ARIMA forecast the last 8 periods one step at a time, each time using only the past (rolling origin; Hyndman &amp; Athanasopoulos, <i>Forecasting: Principles and Practice</i>, 3rd ed.). The lowest error wins, and its 80% interval coverage is shown: a method can win on error and still be overconfident. (In your browser, a pasted series races seasonal naive against ETS; the built-in products were also raced against ARIMA offline, by the Python reference implementation in this repository.)</p>
-        <p><b>Sold-out periods hide demand.</b> If a period sold exactly the stock on hand, demand was at least that high. With a stock column, those periods are replaced by draws from the sales seen at or above that level before anything is fit (a Kaplan–Meier style fix), which widens the top of the demand range instead of understating it.</p>
-        <p><b>Intermittent demand</b> (30% or more of periods at zero) breaks ETS and ARIMA assumptions, so the tool samples past periods directly and says so (Syntetos &amp; Boylan 2005).</p>
-        <p class="footnote">Where the numbers behind this tool came from (the 30-product backtest, the classic study this replaces): see <a href="https://github.com/omidgolchin/order-quantity-planner#research-notes">Research notes</a>.</p>
+          <p><b>The forecast is chosen by backtest, not by fit.</b> Seasonal naive, ETS and ARIMA forecast the last 8 periods one step at a time, each time using only the past (rolling origin; Hyndman &amp; Athanasopoulos, <i>Forecasting: Principles and Practice</i>, 3rd ed.). The lowest error wins, and its 80% interval coverage is shown: a method can win on error and still be overconfident. (In your browser, a pasted series races seasonal naive against ETS; the built-in products were also raced against ARIMA offline, by the Python reference implementation in this repository.)</p>
+          <p><b>Sold-out periods hide demand.</b> If a period sold exactly the stock on hand, demand was at least that high. With a stock column, those periods are replaced by draws from the sales seen at or above that level before anything is fit (a Kaplan–Meier style fix), which widens the top of the demand range instead of understating it.</p>
+          <p><b>Intermittent demand</b> (30% or more of periods at zero) breaks ETS and ARIMA assumptions, so the tool samples past periods directly and says so (Syntetos &amp; Boylan 2005).</p>
+          <p class="footnote">Where the numbers behind this tool came from (the 30-product backtest, the classic study this replaces): see <a href="https://github.com/omidgolchin/order-quantity-planner#research-notes">Research notes</a>.</p>
+        </div>
+      </details>
+    </div>
+    <aside class="doc-notes" aria-label="Notes on the order">
+      <div class="doc-note">
+        <h3>How the order size is chosen</h3>
+        <p>This is the newsvendor problem. Order until one more unit is as likely to lose money as to make it. That happens at the <i>critical ratio</i>: underage cost ÷ (underage + overage), where underage = price − cost (+ lost-sale cost) and overage = cost − salvage. The order is the demand level with that probability of not being exceeded.</p>
       </div>
-    </details>
+      <div class="doc-note">
+        <h3>Chance of running out</h3>
+        <p>The probability that demand next period exceeds the order. Ordering for zero stockouts is almost never profitable; the right level depends on your margins.</p>
+      </div>
+      <div class="doc-note">
+        <h3>Quantile</h3>
+        <p>A level of demand named by how often demand stays at or below it. For example, the 60% quantile is the amount that demand stays at or below in 60% of periods. The tool orders the quantile at your critical ratio (shown in the ORDER LEVEL check), so you run out in the remaining share of periods: exactly the balance your prices make worthwhile.</p>
+      </div>
+      <div class="doc-note">
+        <h3>Profit by order size</h3>
+        <p>For every order size, the average profit over thousands of simulated demand draws from the forecast. The peak is the best order. A flat top means you have room; a steep side shows which mistake (too few or too many) costs more. Drag the marker under the chart to read the profit at any other quantity — it only explores; the recommended order does not change.</p>
+      </div>
+    </aside>
   </section>
 
-  <!-- ================= CHECK ================= -->
-  <section id="view-check" role="tabpanel" aria-labelledby="tab-check" hidden>
-    <div class="guide" aria-label="How to use this mode">
-      <ol class="steps">
-        <li><b>Enter what you ordered and sold</b> last period, and whether you ran out.</li>
-        <li><b>The tool replays the decision</b> with the product and prices from <i>Plan an order</i>.</li>
-        <li><b>Read the grade</b>: whether the order was sound given what you knew, and how much it cost compared with the plan.</li>
-      </ol>
-    </div>
-    <div class="work">
-      <form class="panel" id="f-check" novalidate onsubmit="return false">
-        <div class="panel-head"><h2>Last period</h2></div>
-        <div class="fields">
-          <div class="field"><label for="cOrdered">Units you ordered</label><div class="input-wrap"><input id="cOrdered" type="number" min="0" step="1" inputmode="numeric"><span class="unit">units</span></div><div class="hint">Units you bought for that period.</div></div>
-          <div class="field"><label for="cSold">Units you sold</label><div class="input-wrap"><input id="cSold" type="number" min="0" step="1" inputmode="numeric"><span class="unit">units</span></div><div class="hint">Units actually sold. If you sold out, this equals what you ordered.</div></div>
-          <div class="field"><label for="cRanOut">Did you run out? <button type="button" data-tip="censored"></button></label>
-            <select id="cRanOut"><option value="no">No, some were left</option><option value="yes">Yes, we sold out</option></select>
-            <div class="hint">Uses the product, prices and forecast from <b>Plan an order</b>.</div></div>
-        </div>
+  <!-- ================= 4 · CHECK LAST PERIOD ================= -->
+  <section class="doc-sec" id="sec-check" aria-labelledby="sec-check-h">
+    <div class="doc-main">
+      <h2 id="sec-check-h">4 · Check last period</h2>
+      <form id="f-check" novalidate onsubmit="return false">
+        <p>Last period, you ordered <span class="field ifield"><label for="cOrdered">units you ordered</label> <span class="input-wrap"><input id="cOrdered" type="number" min="0" step="1" inputmode="numeric"><span class="unit">units</span></span></span> and sold <span class="field ifield"><label for="cSold">units you sold</label> <span class="input-wrap"><input id="cSold" type="number" min="0" step="1" inputmode="numeric"><span class="unit">units</span></span></span> — if you sold out, the two are equal. <span class="field ifield"><label for="cRanOut">Did you run out?</label> <select id="cRanOut"><option value="no">No, some were left</option><option value="yes">Yes, we sold out</option></select></span> The tool replays the decision with the product and prices from the sections above, and grades the order given what you knew at the time.</p>
       </form>
-      <div>
-        <section class="panel verdict" id="cVerdict" aria-live="polite">
-          <p class="v-kicker">Grade</p>
-          <p class="v-title" id="cTitle">…</p>
-          <p class="v-body" id="cBody"></p>
-          <div class="kpis" id="cKpis"></div>
-          <div class="checks" id="cChecks" aria-label="Built-in checks"></div>
-        </section>
-        <div class="actions">
-          <button type="button" id="cCopySummary">Copy summary</button>
-          <button type="button" id="cCopyLink">Copy link</button>
-          <span class="toast" id="toastC"></span>
+      <section class="panel verdict" id="cVerdict" aria-live="polite">
+        <p class="v-kicker">Grade</p>
+        <p class="v-title" id="cTitle">…</p>
+        <p class="v-body" id="cBody"></p>
+        <div class="kpis" id="cKpis"></div>
+        <div class="checks" id="cChecks" aria-label="Built-in checks"></div>
+      </section>
+      <div class="actions">
+        <button type="button" id="cCopySummary">Copy summary</button>
+        <button type="button" id="cCopyLink">Copy link</button>
+        <span class="toast" id="toastC"></span>
+      </div>
+      <details class="more">
+        <summary>How last period is graded <span class="sub">what counts as money left on the table</span></summary>
+        <div class="more-body small">
+          <p>Your realized profit is computed from what actually sold. The plan's order is the recommendation from section 3 for the same product and prices. “Left on the table” compares expected profit (over the whole demand distribution) at the plan's quantity against your quantity: one period is a single draw, so a good order can still lose money and a bad one can get lucky. If you sold out, your sales are a floor on demand, not demand itself: the grade says so instead of treating the period as fully observed.</p>
         </div>
-      </div>
+      </details>
     </div>
-    <details class="more">
-      <summary>How last period is graded <span class="sub">what counts as money left on the table</span></summary>
-      <div class="more-body small">
-        <p>Your realized profit is computed from what actually sold. The plan's order is the recommendation from <b>Plan an order</b> for the same product and prices. "Left on the table" compares expected profit (over the whole demand distribution) at the plan's quantity against your quantity: one period is a single draw, so a good order can still lose money and a bad one can get lucky. If you sold out, your sales are a floor on demand, not demand itself: the grade says so instead of treating the period as fully observed.</p>
+    <aside class="doc-notes" aria-label="Notes on checking last period">
+      <div class="doc-note">
+        <h3>Gap to the plan</h3>
+        <p>How much more profit the plan's order would have earned on average than your order, given what was known before the period. It grades the decision, not the luck of one period.</p>
       </div>
-    </details>
+      <div class="doc-note">
+        <h3>Sold-out periods</h3>
+        <p>When you sell out, true demand was at least what you sold, maybe more. Treating that period as exact demand underestimates demand and leads to ordering too little next time. The tool treats sold-out periods as “at least”.</p>
+      </div>
+    </aside>
   </section>
 
   <footer class="kit-footer">
