@@ -95,9 +95,9 @@
   <section class="doc-sec" id="sec-order" aria-labelledby="sec-order-h">
     <div class="doc-main">
       <h2 id="sec-order-h">3 · The order</h2>
-      <section class="panel verdict" id="verdict" aria-live="polite">
+      <section class="panel verdict" id="verdict">
         <p class="v-kicker">Verdict</p>
-        <p class="v-title" id="vTitle">…</p>
+        <p class="v-title" id="vTitle" aria-live="polite" aria-atomic="true">…</p>
         <p class="v-body" id="vBody"></p>
         <div class="kpis" id="kpis"></div>
         <div class="checks" id="checksP" aria-label="Built-in checks"></div>
@@ -174,9 +174,9 @@ order = smallest Q with P(demand ≤ Q) ≥ critical ratio</div>
       <form id="f-check" novalidate onsubmit="return false">
         <p>Last period, you ordered <span class="field ifield"><label for="cOrdered">units you ordered</label> <span class="input-wrap"><input id="cOrdered" type="number" min="0" step="1" inputmode="numeric"><span class="unit">units</span></span></span> and sold <span class="field ifield"><label for="cSold">units you sold</label> <span class="input-wrap"><input id="cSold" type="number" min="0" step="1" inputmode="numeric"><span class="unit">units</span></span></span> — if you sold out, the two are equal. <span class="field ifield"><label for="cRanOut">Did you run out?</label> <select id="cRanOut"><option value="no">No, some were left</option><option value="yes">Yes, we sold out</option></select></span> The tool replays the decision with the product and prices from the sections above, and grades the order given what you knew at the time.</p>
       </form>
-      <section class="panel verdict" id="cVerdict" aria-live="polite">
+      <section class="panel verdict" id="cVerdict">
         <p class="v-kicker">Grade</p>
-        <p class="v-title" id="cTitle">…</p>
+        <p class="v-title" id="cTitle" aria-live="polite" aria-atomic="true">…</p>
         <p class="v-body" id="cBody"></p>
         <div class="kpis" id="cKpis"></div>
         <div class="checks" id="cChecks" aria-label="Built-in checks"></div>

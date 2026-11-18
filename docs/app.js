@@ -3,6 +3,10 @@
 (function () {
   "use strict";
   var $ = function (id) { return document.getElementById(id); };
+  /* Live regions (the verdict title) are written only when their text
+   * changes, so a screen reader does not announce an unchanged verdict
+   * again after every pause in typing. */
+  var setLive = function (el, s) { s = String(s); if (el.textContent !== s) el.textContent = s; };
   function openDetails(id) { var d = document.getElementById(id); if (d && d.tagName === "DETAILS") { d.open = true; d.scrollIntoView({ block: "start" }); var su = d.querySelector("summary"); if (su) su.focus(); } }
   document.querySelectorAll("a.open-details").forEach(function (a) { a.addEventListener("click", function (e) { e.preventDefault(); openDetails(a.getAttribute("href").slice(1)); }); });
   if (location.hash === "#fit" || location.hash === "#origin") openDetails(location.hash.slice(1));
@@ -130,7 +134,7 @@
     state.period = $("period").value;
     writeUrl();
     if (!v) {
-      $("vTitle").textContent = "Check the highlighted inputs"; $("vBody").textContent = "";
+      setLive($("vTitle"), "Check the highlighted inputs"); $("vBody").textContent = "";
       $("verdict").className = "panel verdict v-neutral"; $("kpis").innerHTML = ""; $("checksP").innerHTML = "";
       cur = null; return;
     }
@@ -176,7 +180,7 @@
       body = zeroNote + "Expected profit " + money(plan.expProfit) + " (5th to 95th percentile: " + money(plan.profitP5) + " to " + money(plan.profitP95) +
         "). Chance of running out: " + F.pct(plan.stockoutProb, 0) + ". Expected leftovers: " + F.num(plan.expLeftovers, 0) + " units. " + fcLine;
     }
-    $("vTitle").textContent = title; $("vBody").textContent = body;
+    setLive($("vTitle"), title); $("vBody").textContent = body;
     $("verdict").className = "panel verdict v-" + cls;
     cur.title = title; cur.body = body;
     $("kpis").innerHTML = [
@@ -335,7 +339,7 @@
     need("cSold", sold !== null && sold >= 0 && Number.isInteger(sold) && (ordered === null || sold <= ordered), "Enter the units you sold, as a whole number no larger than what you ordered.");
     writeUrl();
     if (!ok || !cur) {
-      $("cTitle").textContent = !cur ? "Work out the order above first" : "Check the highlighted inputs";
+      setLive($("cTitle"), !cur ? "Work out the order above first" : "Check the highlighted inputs");
       $("cBody").textContent = !cur ? "The grade uses the product, prices and forecast from the order above." : "";
       $("cVerdict").className = "panel verdict v-neutral"; $("cKpis").innerHTML = ""; $("cChecks").innerHTML = "";
       return;
@@ -355,7 +359,7 @@
       ". Your realized profit was " + money(r.realizedProfit) + ". In expectation (one period is a single draw, so luck plays its part), your quantity earns " +
       money(r.expProfitYours) + " against the plan's " + money(r.expProfitPlan) + "." +
       (ranOut ? " Because you sold out, demand was at least " + F.int(ordered) + " units: your sales are a floor on demand, not demand itself." : "");
-    $("cTitle").textContent = title; $("cBody").textContent = body;
+    setLive($("cTitle"), title); $("cBody").textContent = body;
     $("cVerdict").className = "panel verdict v-" + cls;
     cur.checkTitle = title; cur.checkBody = body;
     $("cKpis").innerHTML = [
